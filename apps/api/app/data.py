@@ -1,7 +1,7 @@
-"""Accès aux données de service (Gold).
+"""Accès aux données de service (Gold) — Incrément 1.
 
-Incrément 0 : lecture du GeoJSON produit par la Data Factory, avec cache
-mémoire simple. Le chemin PostGIS est prévu pour V+ (non requis ici).
+Lit les sorties de la Data Factory : GeoJSON multi-indicateurs, métadonnées des
+couches, historique par zone, rapport DQ / manifeste. Cache mémoire simple.
 """
 from __future__ import annotations
 
@@ -12,49 +12,62 @@ from . import config
 
 
 class DataUnavailable(Exception):
-    """Levée quand le GeoJSON de service n'a pas encore été publié."""
+    """Sortie Gold absente : lancer d'abord la Data Factory (data/factory/run.py)."""
+
+
+def _read(name: str) -> dict | list:
+    path = config.GOLD_DIR / name
+    if not path.exists():
+        raise DataUnavailable(f"Fichier de service introuvable : {path}.")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @lru_cache(maxsize=1)
-def _load() -> dict:
-    if not config.GOLD_GEOJSON.exists():
-        raise DataUnavailable(
-            f"GeoJSON de service introuvable : {config.GOLD_GEOJSON}. "
-            "Lancer d'abord la Data Factory (data/factory/run.py)."
-        )
-    return json.loads(config.GOLD_GEOJSON.read_text(encoding="utf-8"))
+def geojson() -> dict:
+    return _read("communes_indicators.geojson")  # type: ignore[return-value]
+
+
+@lru_cache(maxsize=1)
+def layers() -> list:
+    return _read("layers.json")  # type: ignore[return-value]
+
+
+@lru_cache(maxsize=1)
+def history() -> dict:
+    return _read("history.json")  # type: ignore[return-value]
+
+
+@lru_cache(maxsize=1)
+def manifest() -> dict:
+    return _read("manifest.json")  # type: ignore[return-value]
 
 
 def reload_cache() -> None:
-    _load.cache_clear()
-
-
-def get_feature_collection() -> dict:
-    return _load()
+    for fn in (geojson, layers, history, manifest):
+        fn.cache_clear()
 
 
 def get_commune(code: str) -> dict | None:
-    for feat in _load().get("features", []):
+    for feat in geojson().get("features", []):
         if str(feat["properties"].get("code_commune")) == str(code):
-            return feat
+            props = dict(feat["properties"])
+            props["history"] = history().get(str(code), {})
+            return props
     return None
 
 
 def get_meta() -> dict:
-    fc = _load()
+    fc = geojson()
+    man = manifest()
     with_data = [f for f in fc["features"] if f["properties"].get("has_data")]
-    sample = with_data[0]["properties"] if with_data else {}
     return {
-        "indicator": "prix_m2",
         "communes_total": len(fc["features"]),
         "communes_with_data": len(with_data),
-        "source": sample.get("source"),
-        "millesime": sample.get("millesime"),
-        "periode": sample.get("periode"),
-        "derniere_maj": sample.get("derniere_maj"),
-        "nature": "measure",
-        "methode": "médiane des prix au m² des ventes de logements (DVF), "
-        "après filtrage des valeurs aberrantes",
-        "avertissement": "Aide à la décision — chiffres sourcés et datés, "
-        "l'utilisateur reste décisionnaire.",
+        "indicators": man.get("indicators", []),
+        "departement": man.get("departement"),
+        "dvf_millesimes": man.get("dvf_millesimes"),
+        "global_dq_score": man.get("dq_report", {}).get("global_dq_score"),
+        "run_finished": man.get("run_finished"),
+        "avertissement": "Aide à la décision — chiffres sourcés, datés et "
+        "assortis d'un niveau de confiance. L'utilisateur reste décisionnaire.",
     }

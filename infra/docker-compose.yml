@@ -15,7 +15,7 @@ services:
   api:
     build: ../apps/api
     environment:
-      GOLD_GEOJSON: /data/gold/communes_prix_m2.geojson
+      GOLD_DIR: /data/gold
       CORS_ORIGINS: http://localhost:3000
     volumes:
       # Monte les sorties de la Data Factory (lancer d'abord data/factory/run.py).

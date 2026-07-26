@@ -8,18 +8,18 @@ export default async function Home() {
   try {
     meta = await fetchMeta();
   } catch {
-    meta = null; // l'API n'est peut-être pas démarrée ; la carte affichera l'erreur
+    meta = null;
   }
 
   return (
     <main>
       <header className="topbar">
         <div>
-          <h1>Copilote immobilier — Prix au m²</h1>
+          <h1>Copilote immobilier — indicateurs territoriaux</h1>
           <p className="subtitle">
-            Incrément 0 · chaîne DVF → carte · {" "}
+            Incrément 1 · Data Factory multi-sources ·{" "}
             {meta
-              ? `${meta.communes_with_data} communes · ${meta.source} · ${meta.periode}`
+              ? `${meta.communes_with_data} communes · ${meta.indicators.length} indicateurs · DQ global ${meta.global_dq_score}`
               : "démarrez l'API pour charger les données"}
           </p>
         </div>
@@ -30,10 +30,8 @@ export default async function Home() {
 
       <footer className="sourcebar">
         {meta?.avertissement ??
-          "Chiffres sourcés et datés. Aide à la décision immobilière."}
-        {meta?.derniere_maj
-          ? ` · Dernière mise à jour : ${meta.derniere_maj.slice(0, 10)}`
-          : ""}
+          "Chiffres sourcés, datés et assortis d'un niveau de confiance."}
+        {meta?.run_finished ? ` · Données publiées le ${meta.run_finished.slice(0, 10)}` : ""}
       </footer>
     </main>
   );

@@ -1,33 +1,36 @@
 #!/usr/bin/env python3
-"""Point d'entrée CLI de la Data Factory (Incrément 0).
+"""Point d'entrée CLI de la Data Factory (Incrément 1).
 
 Usage:
     python run.py
 
-Variables d'env utiles (config-driven, voir dvf_pipeline/config.py) :
-    DVF_SOURCE_URL   URL geo-dvf réelle (sinon fixture hors-ligne)
-    COMMUNES_GEOJSON contours communaux (sinon fixture)
-    DATABASE_URL     charge aussi PostGIS si défini
+Config-driven (voir factory/config.py) :
+    DVF_MILLESIMES=2023,2024        millésimes DVF à charger (historisation)
+    DVF_SOURCE_URL_TEMPLATE=...     vraie source geo-dvf ({millesime},{dep})
+    COMMUNES_GEOJSON=...            contours IGN
+    FACTORY_TODAY=YYYY-MM-DD        date de référence pour la fraîcheur
 """
 from __future__ import annotations
 
 import json
 import sys
 
-from dvf_pipeline import run_pipeline
+from factory import run_pipeline
 
 
 def main() -> int:
-    result = run_pipeline()
-    print("=== Data Factory DVF — run terminé ===")
-    print(f"Communes scorées : {result['communes_scored']}")
-    print(f"DQ score         : {result['dq_report']['dq_score']}")
-    if result["dq_report"]["warnings"]:
-        print("Avertissements   :")
-        for w in result["dq_report"]["warnings"]:
-            print(f"  - {w}")
+    r = run_pipeline()
+    print("=== Data Factory (multi-sources) — run terminé ===")
+    print(f"Indicateurs      : {', '.join(r['indicators'])}")
+    print(f"Zones avec data  : {r['run_meta']['zones_with_data']}/{r['run_meta']['zones_total']}")
+    print(f"Lignes historique: {r['history_rows']} (tous millésimes conservés)")
+    print(f"DQ global        : {r['dq_report']['global_dq_score']}")
+    print("DQ par indicateur:")
+    for code, v in r["dq_report"]["per_indicator"].items():
+        tag = " (estimé)" if v["is_estimated"] else ""
+        print(f"  - {code:<18} {v['dq_score']:>5}  [{v['nature']}]{tag}")
     print("Sorties (Gold)   :")
-    print(json.dumps(result["outputs"], indent=2, ensure_ascii=False))
+    print(json.dumps(r["outputs"], indent=2, ensure_ascii=False))
     return 0
 
 

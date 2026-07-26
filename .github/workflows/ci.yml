@@ -22,8 +22,10 @@ jobs:
         run: python -m pytest -q
       - name: Exécuter le pipeline de bout en bout (fixtures)
         run: python run.py
+        env:
+          FACTORY_TODAY: "2026-07-26"
       - name: Vérifier la sortie Gold
-        run: test -f gold/communes_prix_m2.geojson
+        run: test -f gold/communes_indicators.geojson && test -f gold/history.json
       - uses: actions/upload-artifact@v4
         with:
           name: gold-output
@@ -41,6 +43,8 @@ jobs:
       - name: Régénérer les données de service
         working-directory: data/factory
         run: pip install -r requirements.txt && python run.py
+        env:
+          FACTORY_TODAY: "2026-07-26"
       - name: Installer l'API
         working-directory: apps/api
         run: pip install -r requirements.txt httpx
@@ -52,9 +56,13 @@ jobs:
           from app.main import app
           c = TestClient(app)
           assert c.get("/health").json()["status"] == "ok"
-          assert c.get("/api/meta").json()["communes_with_data"] >= 1
+          meta = c.get("/api/meta").json()
+          assert meta["communes_with_data"] >= 1 and len(meta["indicators"]) >= 5
+          assert len(c.get("/api/layers").json()) >= 5
           assert len(c.get("/api/communes").json()["features"]) >= 1
-          assert c.get("/api/communes/33063").json()["prix_m2"] > 0
+          b = c.get("/api/communes/33063").json()
+          assert b["indicators"]["prix_m2"]["value"] > 0
+          assert b["confidence_score"] is not None
           print("API smoke OK")
           PY
 

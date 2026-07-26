@@ -47,11 +47,12 @@ Il ne s'agit **pas** d'un énième portail de statistiques immobilières, mais d
 
 Premier incrément **exécutable** du plan de développement ([`docs/17`](docs/17-plan-developpement.md)) :
 il prouve la chaîne complète **source → nettoyage → indicateur → API → carte**, avec
-traçabilité (source + date + confiance) partout.
+traçabilité (source + date + confiance) partout. *(Étendu par l'Incrément 1 ci-dessous ;
+le démarrage rapide ci-après reste valable, les sorties Gold sont désormais multi-indicateurs.)*
 
 ```
-data/factory  ──run.py──▶  gold/communes_prix_m2.geojson  ──▶  apps/api (FastAPI)  ──▶  apps/web (Next.js + MapLibre)
-  DVF → clean → médiane €/m² par commune          indicateur sourcé & daté        carte choroplèthe + fiche traçable
+data/factory  ──run.py──▶  gold/*.geojson  ──▶  apps/api (FastAPI)  ──▶  apps/web (Next.js + MapLibre)
+  DVF → clean → médiane €/m² par commune     indicateur sourcé & daté     carte choroplèthe + fiche traçable
 ```
 
 ### Démarrage rapide
@@ -92,6 +93,37 @@ data/
 packages/
   shared/  contrat d'API partagé
 infra/     docker-compose (PostGIS + api + web), init.sql
+```
+
+## Incrément 1 — Data Factory multi-sources + qualité + historisation
+
+Deuxième incrément : passage d'un indicateur unique à un **modèle d'indicateurs
+générique multi-sources**, avec historisation, Data Quality structurée et
+**couches cartographiques commutables**.
+
+- **8 indicateurs par commune** : `prix_m2`, `tendance_prix_1an`, `loyer_m2`
+  (estimé), `rendement_brut`, `population`, `revenu_median`, `ips_moyen`,
+  `temps_gare_min` — chacun **sourcé, daté**, marqué mesure / calc / estimé.
+- **Sources** : DVF (2 millésimes), INSEE, Carte des loyers, Éducation (IPS),
+  Transports — connecteurs enfichables (`data/factory/factory/sources/`).
+- **Historisation append-only** (`silver/indicator_history.csv`) : tous les
+  millésimes conservés (RG-D4), pas de fraîcheur artificielle (RG-D5) → calcul de
+  la **tendance de prix** entre millésimes.
+- **Data Quality** : contrôles déclaratifs par indicateur (complétude, validité,
+  fraîcheur, volume) → DQ score ; contrôle bloquant avant publication.
+- **Data Confidence Score par zone** : agrège la qualité des indicateurs présents.
+- **API enrichie** : `/api/layers`, `/api/communes` (tous indicateurs + confiance),
+  `/api/communes/{code}` (+ historique).
+- **Carte** : sélecteur de couches, légende dynamique, badge de confiance, fiche
+  avec sources/millésimes et **sparkline d'évolution des prix**.
+
+**Vérifié** : `pytest` (9 tests : nettoyage DVF, dérivés, historisation append-only,
+DQ, confiance) ✓ · pipeline end-to-end (8 indicateurs, 6/6 zones, 54 lignes
+d'historique, DQ global 90,1) ✓ · smoke API ✓ · `next build` + typecheck ✓ ·
+intégration API↔web ✓.
+
+```bash
+cd data/factory && source .venv/bin/activate && python run.py   # (FACTORY_TODAY=2026-07-26 pour un run déterministe)
 ```
 
 ## Avertissement

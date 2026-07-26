@@ -1,8 +1,8 @@
-"""API de lecture — copilote immobilier (Incrément 0).
+"""API de lecture — copilote immobilier (Incrément 1).
 
-Expose l'indicateur prix_m2 par commune (produit par la Data Factory) sous
-forme GeoJSON pour la carte, plus les métadonnées de traçabilité (source,
-période, dernière mise à jour) — exigence de transparence (docs/09).
+Sert les indicateurs multi-sources par commune (prix, loyer, rendement,
+population, revenu, éducation, transports, tendance), la confiance par zone, les
+métadonnées des couches et l'historique — avec traçabilité (source, millésime).
 """
 from __future__ import annotations
 
@@ -12,9 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import config, data
 
 app = FastAPI(
-    title="Copilote immobilier — API (Incrément 0)",
-    version="0.1.0",
-    description="Chaîne DVF → carte : prix au m² par commune, sourcé et daté.",
+    title="Copilote immobilier — API (Incrément 1)",
+    version="0.2.0",
+    description="Indicateurs immobiliers et territoriaux par commune, sourcés, "
+    "datés et assortis d'un niveau de confiance.",
 )
 
 app.add_middleware(
@@ -25,6 +26,13 @@ app.add_middleware(
 )
 
 
+def _guard(fn):
+    try:
+        return fn()
+    except data.DataUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -32,29 +40,25 @@ def health() -> dict:
 
 @app.get("/api/meta")
 def meta() -> dict:
-    """Métadonnées de traçabilité de l'indicateur (source, date, méthode)."""
-    try:
-        return data.get_meta()
-    except data.DataUnavailable as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return _guard(data.get_meta)
+
+
+@app.get("/api/layers")
+def layers() -> list:
+    """Couches cartographiques disponibles (indicateurs + métadonnées)."""
+    return _guard(data.layers)
 
 
 @app.get("/api/communes")
 def communes() -> dict:
-    """FeatureCollection GeoJSON des communes + prix_m2 (pour la carte)."""
-    try:
-        return data.get_feature_collection()
-    except data.DataUnavailable as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    """FeatureCollection : géométries + tous les indicateurs + confiance."""
+    return _guard(data.geojson)
 
 
 @app.get("/api/communes/{code}")
 def commune(code: str) -> dict:
-    """Fiche synthétique d'une commune (valeur + traçabilité)."""
-    try:
-        feat = data.get_commune(code)
-    except data.DataUnavailable as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    """Fiche d'une commune : indicateurs, confiance et historique multi-millésimes."""
+    feat = _guard(lambda: data.get_commune(code))
     if feat is None:
         raise HTTPException(status_code=404, detail=f"Commune {code} inconnue.")
-    return feat["properties"]
+    return feat

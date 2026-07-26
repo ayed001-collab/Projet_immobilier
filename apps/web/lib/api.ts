@@ -1,29 +1,45 @@
-// Contrat de lecture avec l'API (Incrément 0).
-// Les appels passent par /api/* (réécrit vers l'API FastAPI par next.config.js).
+// Contrat de lecture avec l'API (Incrément 1).
+
+export interface IndicatorValue {
+  value: number;
+  unit: string;
+  millesime: string;
+  source: string;
+  nature: string; // measure | calc | model | editorial | forecast
+  is_estimated: boolean;
+  label: string;
+  direction: string; // higher_better | lower_better | context
+}
 
 export interface CommuneProps {
   code_commune: string;
   nom_commune: string;
   has_data: boolean;
-  prix_m2?: number;
-  obs_count?: number;
-  periode?: string;
-  confidence_score?: number;
-  confidence_level?: string;
-  source?: string;
-  millesime?: string;
-  derniere_maj?: string;
-  is_estimated?: boolean;
+  confidence_score: number | null;
+  confidence_level: string | null;
+  indicators: Record<string, IndicatorValue>;
+  history?: Record<string, { millesime: string; value: number }[]>;
+}
+
+export interface Layer {
+  code: string;
+  label: string;
+  unit: string;
+  category: string;
+  nature: string;
+  direction: string;
+  is_estimated: boolean;
+  source: string;
 }
 
 export interface Meta {
-  indicator: string;
   communes_total: number;
   communes_with_data: number;
-  source?: string;
-  periode?: string;
-  derniere_maj?: string;
-  methode?: string;
+  indicators: string[];
+  departement?: string;
+  dvf_millesimes?: string[];
+  global_dq_score?: number;
+  run_finished?: string;
   avertissement?: string;
 }
 
@@ -32,14 +48,12 @@ const base =
     ? process.env.API_URL || "http://localhost:8000"
     : "";
 
-export async function fetchCommunes(): Promise<GeoJSON.FeatureCollection> {
-  const res = await fetch(`${base}/api/communes`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`API /communes: ${res.status}`);
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${base}${path}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
   return res.json();
 }
 
-export async function fetchMeta(): Promise<Meta> {
-  const res = await fetch(`${base}/api/meta`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`API /meta: ${res.status}`);
-  return res.json();
-}
+export const fetchMeta = () => get<Meta>("/api/meta");
+export const fetchLayers = () => get<Layer[]>("/api/layers");
+export const fetchCommunes = () => get<GeoJSON.FeatureCollection>("/api/communes");

@@ -1,7 +1,9 @@
-# API de lecture (Incrément 0)
+# API de lecture (Incrément 1)
 
-FastAPI qui sert l'indicateur `prix_m2` par commune produit par la Data Factory,
-avec les métadonnées de traçabilité (exigence de transparence, docs/09).
+FastAPI qui sert les **indicateurs multi-sources** par commune produits par la
+Data Factory (prix, loyer, rendement, population, revenu, éducation, transports,
+tendance), la **confiance par zone**, les **couches** disponibles et l'**historique**
+— avec traçabilité (source, millésime), exigence de transparence (docs/09).
 
 ## Lancer
 
@@ -18,14 +20,14 @@ uvicorn app.main:app --reload --port 8000
 | Méthode | Route | Description |
 |---------|-------|-------------|
 | GET | `/health` | Sonde de vivacité |
-| GET | `/api/meta` | Métadonnées de l'indicateur (source, période, méthode, dernière MAJ) |
-| GET | `/api/communes` | FeatureCollection GeoJSON (communes + prix_m2) pour la carte |
-| GET | `/api/communes/{code}` | Fiche synthétique d'une commune (valeur + traçabilité) |
+| GET | `/api/meta` | Résumé du run (indicateurs, DQ global, département, millésimes) |
+| GET | `/api/layers` | Couches disponibles (indicateurs + libellés/unités/sens/source) |
+| GET | `/api/communes` | FeatureCollection GeoJSON (communes + tous les indicateurs + confiance) |
+| GET | `/api/communes/{code}` | Fiche d'une commune : indicateurs, confiance et **historique** |
 
 Docs interactives : `http://localhost:8000/docs`.
 
 ## Configuration (env)
 
-- `GOLD_GEOJSON` : chemin du GeoJSON de service (défaut : `data/factory/gold/…`).
+- `GOLD_DIR` : dossier des sorties de service (défaut : `data/factory/gold/`).
 - `CORS_ORIGINS` : origines autorisées (défaut : `http://localhost:3000`).
-- `DATABASE_URL` : réservé au chemin PostGIS (V+).
