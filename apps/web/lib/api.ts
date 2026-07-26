@@ -74,3 +74,68 @@ async function get<T>(path: string): Promise<T> {
 export const fetchMeta = () => get<Meta>("/api/meta");
 export const fetchLayers = () => get<Layer[]>("/api/layers");
 export const fetchCommunes = () => get<GeoJSON.FeatureCollection>("/api/communes");
+
+// --- Financement ----------------------------------------------------------
+export interface FinanceInput {
+  revenus_mensuels: number;
+  apport: number;
+  taux_annuel: number;
+  duree_annees: number;
+}
+export interface FinanceResult {
+  mensualite_max: number;
+  capacite_emprunt: number;
+  enveloppe_totale: number;
+  frais_estimes: number;
+  budget_achat: number;
+  taux_frais: number;
+  hypotheses: Record<string, unknown>;
+}
+
+// --- Scoring / recherche inversée ----------------------------------------
+export interface WeightsResponse {
+  profile: string;
+  scoring_version: string;
+  weights: Record<string, number>;
+  criteria: Record<string, { label: string; indicator: string; direction: string }>;
+}
+export interface RankedZone {
+  zone_id: string;
+  nom_commune: string;
+  rank: number;
+  score: number;
+  confidence_score: number | null;
+  breakdown: ScoreContribution[];
+  bien_type_price?: number | null;
+  within_budget?: boolean | null;
+}
+export interface ScoreResponse {
+  profile: string;
+  scoring_version: string;
+  weights_applied: Record<string, number>;
+  budget?: number | null;
+  surface?: number | null;
+  results: RankedZone[];
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
+  return res.json();
+}
+
+export const fetchWeights = (profile: string) =>
+  get<WeightsResponse>(`/api/weights?profile=${profile}`);
+export const postFinance = (input: FinanceInput) =>
+  post<FinanceResult>("/api/finance", input);
+export const postScore = (body: {
+  profile: string;
+  weights?: Record<string, number>;
+  budget?: number | null;
+  surface?: number | null;
+}) => post<ScoreResponse>("/api/score", body);

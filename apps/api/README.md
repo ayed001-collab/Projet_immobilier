@@ -25,11 +25,17 @@ uvicorn app.main:app --reload --port 8000
 | GET | `/api/communes` | FeatureCollection GeoJSON (communes + tous les indicateurs + confiance) |
 | GET | `/api/communes/{code}` | Fiche d'une commune : indicateurs, confiance, **scores + décomposition** et historique |
 | GET | `/api/weights?profile=` | Pondérations par défaut d'un profil (home/investment) + libellés des critères |
-| POST | `/api/score` | **Classement personnalisé** : recalcul dynamique selon les pondérations |
+| POST | `/api/finance` | **Module financement** : capacité d'emprunt & budget d'achat |
+| POST | `/api/score` | **Classement personnalisé** + recherche inversée (budget) |
 
-`POST /api/score` — corps : `{ "profile": "home", "weights": { "transports": 1.0 } }`
-(`weights` optionnel ⇒ pondérations par défaut). Renvoie les zones classées avec
-score, confiance et décomposition.
+`POST /api/finance` — corps : `{ "revenus_mensuels": 5200, "apport": 60000, "taux_annuel": 3.5, "duree_annees": 25 }`
+→ mensualité max, capacité d'emprunt, frais, **budget d'achat**.
+
+`POST /api/score` — corps : `{ "profile": "home", "weights": { "transports": 1.0 }, "budget": 300000, "surface": 70 }`
+(`weights`/`budget`/`surface` optionnels). Renvoie les zones classées avec score,
+confiance et décomposition ; si `budget`+`surface` sont fournis, calcule le prix du
+**bien-type** et la compatibilité budget (recherche inversée « Où puis-je acheter ? »),
+les zones compatibles en tête (RG-R2).
 
 Docs interactives : `http://localhost:8000/docs`.
 

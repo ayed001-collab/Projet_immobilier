@@ -54,11 +54,17 @@ Source de vérité des types front (`apps/web/lib/api.ts`).
   "criteria": { "education": { "label": "Éducation", "indicator": "ips_moyen", "direction": "higher_better" } } }
 ```
 
+## `POST /api/finance`
+Corps : `{ revenus_mensuels, apport, taux_annuel, duree_annees, taux_endettement?, bien_neuf? }`.
+Réponse : `{ mensualite_max, capacite_emprunt, enveloppe_totale, frais_estimes, budget_achat, taux_frais, hypotheses }`.
+
 ## `POST /api/score`
-Corps : `{ "profile": "home", "weights": { "transports": 1.0 } }` (`weights` optionnel).
-Réponse : `{ profile, scoring_version, weights_applied, results: RankedZone[] }` où
-`RankedZone` = `{ zone_id, nom_commune, rank, score, confidence_score, breakdown[] }`,
-trié par score décroissant — **recalcul dynamique** au changement de pondération (RG-S1).
+Corps : `{ "profile": "home", "weights"?: {...}, "budget"?: number, "surface"?: number }`.
+Réponse : `{ profile, scoring_version, weights_applied, budget, surface, results: RankedZone[] }` où
+`RankedZone` = `{ zone_id, nom_commune, rank, score, confidence_score, breakdown[], bien_type_price?, within_budget? }`.
+- Sans `budget` : tri par score décroissant — **recalcul dynamique** (RG-S1).
+- Avec `budget`+`surface` : **recherche inversée** — calcule le prix du bien-type par zone,
+  marque la compatibilité budget, place les zones compatibles en tête (RG-R2).
 
 ## `GET /api/communes/{code}`
 Renvoie les `properties` de la commune **+ `history`** :

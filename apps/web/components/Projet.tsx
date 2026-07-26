@@ -1,0 +1,217 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  fetchWeights, postFinance, postScore,
+  type WeightsResponse, type FinanceResult, type ScoreResponse,
+} from "@/lib/api";
+import ResultsMap from "./ResultsMap";
+
+type ProfileType = "home" | "investment";
+
+const TITLES: Record<ProfileType, string> = {
+  home: "🏠 Ma résidence principale",
+  investment: "📈 Investir",
+};
+
+export default function Projet({ type }: { type: ProfileType }) {
+  const [step, setStep] = useState(1);
+  const [w, setW] = useState<WeightsResponse | null>(null);
+  const [importance, setImportance] = useState<Record<string, number>>({});
+
+  const [apport, setApport] = useState(60000);
+  const [revenus, setRevenus] = useState(5200);
+  const [taux, setTaux] = useState(3.5);
+  const [duree, setDuree] = useState(25);
+  const [surface, setSurface] = useState(70);
+
+  const [finance, setFinance] = useState<FinanceResult | null>(null);
+  const [results, setResults] = useState<ScoreResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchWeights(type)
+      .then((res) => {
+        setW(res);
+        const imp: Record<string, number> = {};
+        Object.entries(res.weights).forEach(([k, v]) => (imp[k] = Math.round(v * 100)));
+        setImportance(imp);
+      })
+      .catch(() => setError("API indisponible — démarrez apps/api."));
+  }, [type]);
+
+  const computeFinance = useCallback(async () => {
+    try {
+      setFinance(
+        await postFinance({ revenus_mensuels: revenus, apport, taux_annuel: taux, duree_annees: duree })
+      );
+    } catch {
+      /* silencieux : l'utilisateur peut continuer */
+    }
+  }, [revenus, apport, taux, duree]);
+
+  useEffect(() => {
+    computeFinance();
+  }, [computeFinance]);
+
+  async function seeResults() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await postScore({
+        profile: type,
+        weights: importance,
+        budget: finance?.budget_achat ?? null,
+        surface,
+      });
+      setResults(res);
+      setStep(3);
+    } catch {
+      setError("Erreur de calcul du classement.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const eur = (n: number) => Math.round(n).toLocaleString("fr-FR");
+
+  return (
+    <main className="projet">
+      <header className="topbar">
+        <h1>
+          <Link href="/" className="backlink">←</Link> {TITLES[type]}
+        </h1>
+        {step < 3 && (
+          <span className="stepper">Étape {step}/2</span>
+        )}
+      </header>
+
+      {error && <div className="banner error">{error}</div>}
+
+      {/* Étape 1 — Budget & financement */}
+      {step === 1 && (
+        <section className="panel">
+          <h2>Votre budget</h2>
+          <div className="grid">
+            <label>Apport (€)
+              <input type="number" value={apport} step={5000}
+                onChange={(e) => setApport(+e.target.value)} />
+            </label>
+            <label>Revenus nets du foyer (€/mois)
+              <input type="number" value={revenus} step={100}
+                onChange={(e) => setRevenus(+e.target.value)} />
+            </label>
+            <label>Taux (%)
+              <input type="number" value={taux} step={0.1}
+                onChange={(e) => setTaux(+e.target.value)} />
+            </label>
+            <label>Durée (ans)
+              <input type="number" value={duree} step={1}
+                onChange={(e) => setDuree(+e.target.value)} />
+            </label>
+            <label>Surface cible (m²)
+              <input type="number" value={surface} step={5}
+                onChange={(e) => setSurface(+e.target.value)} />
+            </label>
+          </div>
+
+          {finance && (
+            <div className="budget">
+              <div className="budget-main">
+                Budget d'achat estimé
+                <strong>~ {eur(finance.budget_achat)} €</strong>
+              </div>
+              <ul>
+                <li>Mensualité max : {eur(finance.mensualite_max)} €/mois</li>
+                <li>Capacité d'emprunt : {eur(finance.capacite_emprunt)} €</li>
+                <li>Frais d'acquisition estimés : {eur(finance.frais_estimes)} €</li>
+              </ul>
+              <small>
+                Apport {eur(apport)} € + capacité d'emprunt − frais. Hypothèses :
+                taux {taux} % · endettement 35 %. Estimation indicative, ne vaut pas accord de prêt.
+              </small>
+            </div>
+          )}
+
+          <div className="actions">
+            <button className="primary" onClick={() => setStep(2)}>Continuer ▶</button>
+          </div>
+        </section>
+      )}
+
+      {/* Étape 2 — Critères pondérés */}
+      {step === 2 && w && (
+        <section className="panel">
+          <h2>Ce qui compte pour vous</h2>
+          <p className="hint">Réglez l'importance de chaque critère : le classement s'y adapte.</p>
+          <div className="sliders">
+            {Object.keys(w.weights).map((code) => (
+              <div className="slider" key={code}>
+                <div className="slabel">
+                  <span>{w.criteria[code]?.label ?? code}</span>
+                  <span className="sval">{importance[code] ?? 0}</span>
+                </div>
+                <input type="range" min={0} max={50} value={importance[code] ?? 0}
+                  onChange={(e) => setImportance({ ...importance, [code]: +e.target.value })} />
+              </div>
+            ))}
+          </div>
+          <div className="actions">
+            <button onClick={() => setStep(1)}>◀ Retour</button>
+            <button className="primary" onClick={seeResults} disabled={loading}>
+              {loading ? "Calcul…" : "Voir mes résultats ▶"}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Étape 3 — Résultats */}
+      {step === 3 && results && (
+        <section className="results">
+          <div className="results-list">
+            <div className="results-head">
+              <h2>Vos zones recommandées</h2>
+              <button onClick={() => setStep(2)}>Ajuster</button>
+            </div>
+            {finance && (
+              <p className="ctx">
+                Budget d'achat ~ {eur(finance.budget_achat)} € · bien-type {surface} m²
+              </p>
+            )}
+            <ol>
+              {results.results.map((r) => (
+                <li key={r.zone_id} className={r.within_budget === false ? "over" : ""}>
+                  <div className="rrow">
+                    <span className="rrank">{r.rank}</span>
+                    <span className="rname">{r.nom_commune}</span>
+                    <span className="rscore">{r.score}<small>/100</small></span>
+                  </div>
+                  <div className="rmeta">
+                    {r.bien_type_price != null && (
+                      <span className={r.within_budget ? "ok" : "ko"}>
+                        bien-type ~ {eur(r.bien_type_price)} €
+                        {r.within_budget ? " ✓ dans le budget" : " ✗ au-dessus"}
+                      </span>
+                    )}
+                    {r.confidence_score != null && <span className="rconf">confiance {r.confidence_score}%</span>}
+                  </div>
+                  <div className="rwhy">
+                    Surtout : {[...r.breakdown].sort((a, b) => b.contribution - a.contribution)
+                      .slice(0, 2).map((b) => b.label).join(", ")}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="note">
+              Les zones compatibles avec votre budget apparaissent en premier.
+              Chaque score est expliqué et sourcé — vous restez décisionnaire.
+            </p>
+          </div>
+          <ResultsMap results={results.results} />
+        </section>
+      )}
+    </main>
+  );
+}

@@ -83,6 +83,10 @@ jobs:
           # Recalcul dynamique : 100% transports change le classement.
           r2 = c.post("/api/score", json={"profile": "home", "weights": {"transports": 1.0}}).json()
           assert r2["results"][0]["zone_id"] != r["results"][0]["zone_id"]
+          fin = c.post("/api/finance", json={"revenus_mensuels": 5200, "apport": 60000}).json()
+          assert fin["budget_achat"] > 0 and fin["capacite_emprunt"] > 0
+          rs = c.post("/api/score", json={"profile": "home", "budget": 300000, "surface": 70}).json()
+          assert all("within_budget" in x for x in rs["results"])
           print("API smoke OK")
           PY
 

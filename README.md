@@ -155,6 +155,29 @@ réellement les priorités déclarées.
 décomposition publiés) · smoke API (`/api/score`, `/api/weights`, recalcul
 dynamique) · `next build` + typecheck · intégration API↔web.
 
+## Incrément 3 — Parcours utilisateur (onboarding, financement, résultats)
+
+Quatrième incrément : la **boucle de valeur complète** côté utilisateur —
+*je définis mon projet → la plateforme calcule mon budget → elle classe les zones
+compatibles → je comprends pourquoi.*
+
+- **Home** (`/`) : deux portes très visibles — 🏠 résidence principale / 📈 investir.
+- **Onboarding progressif** (`/projet`) : budget & **module financement** (capacité
+  d'emprunt → **budget d'achat** calculé, frais inclus), surface cible, puis
+  **critères pondérés avec curseurs**.
+- **Résultats** : top personnalisé (score, confiance, **prix du bien-type**, badge
+  « dans le budget »), explication « Surtout : … », et carte du score personnalisé.
+- **Recherche inversée « Où puis-je acheter ? »** : avec budget + surface, les zones
+  compatibles remontent en tête (RG-R2) ; une zone hors budget n'est jamais masquée.
+- **Explorer** (`/carte`) : la carte multi-couches des incréments 1–2 reste accessible.
+
+Back-end ajouté : `POST /api/finance` (capacité d'emprunt & budget d'achat, RG-B) et
+extension budget de `POST /api/score` (prix du bien-type + compatibilité).
+
+**Vérifié** : parcours end-to-end capturé (Home → budget 393 997 € → 6 zones classées
+et compatibles) · smoke API (`/api/finance`, recherche inversée) · `next build` +
+typecheck · intégration API↔web.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.

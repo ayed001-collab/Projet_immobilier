@@ -22,8 +22,18 @@ Build de production : `npm run build && npm run start`.
 
 - `API_URL` : URL de l'API de lecture (SSR + réécriture `/api/*` → voir `next.config.js`).
 
+## Écrans
+
+| Route | Écran |
+|-------|-------|
+| `/` | Home — deux portes (résidence principale / investir) |
+| `/projet?type=home\|investment` | Onboarding progressif (budget + financement + critères pondérés) puis **résultats** (top personnalisé + carte) |
+| `/carte` | Explorer — carte multi-couches + fiche (indicateurs, scores, confiance) |
+
 ## Structure
 
-- `app/page.tsx` — page serveur (récupère `/api/meta` en SSR).
-- `components/MapView.tsx` — carte MapLibre (choroplèthe + fiche au clic).
-- `lib/api.ts` — contrat de lecture avec l'API.
+- `app/page.tsx` — Home (deux parcours).
+- `app/projet/page.tsx` + `components/Projet.tsx` — onboarding + résultats.
+- `app/carte/page.tsx` + `components/MapView.tsx` — explorer cartographique.
+- `components/ResultsMap.tsx` — carte du score personnalisé (résultats).
+- `lib/api.ts` — contrat de lecture/écriture avec l'API.
