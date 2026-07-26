@@ -1,0 +1,5 @@
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+# Optionnels (chemin PostGIS, V+) :
+#   sqlalchemy>=2
+#   psycopg[binary]>=3

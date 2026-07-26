@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Node / Next
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# Data Factory — sorties générées (rejouables via run.py)
+data/factory/bronze/*
+data/factory/silver/*
+data/factory/gold/*
+!data/factory/bronze/.gitkeep
+!data/factory/silver/.gitkeep
+!data/factory/gold/.gitkeep
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
