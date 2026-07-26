@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from . import config, confidence, derived, geo, history, publish, quality
+from scoring import SCORING_VERSION
+
+from . import config, confidence, derived, geo, history, publish, quality, scoring_step
 from .sources import DVFSource, default_sources
 from .sources.base import now_iso
 
@@ -43,8 +45,11 @@ def run_pipeline() -> dict:
     # Confiance par zone
     conf = confidence.per_zone(current)
 
+    # Scoring (batch) : normalisation + Home/Investment par défaut + sous-scores
+    scores = scoring_step.compute(current)
+
     # [9] Publication (Gold)
-    fc = publish.build_geojson(current, conf, geometries)
+    fc = publish.build_geojson(current, conf, geometries, scores)
     history_json = publish.build_history(hist)
     run_meta = {
         "run_started": run_started,
@@ -52,11 +57,12 @@ def run_pipeline() -> dict:
         "departement": config.DEPARTEMENT,
         "dvf_millesimes": config.DVF_MILLESIMES,
         "today_ref": config.TODAY.isoformat(),
+        "scoring_version": SCORING_VERSION,
         "indicators": sorted(current["indicator"].unique().tolist()),
         "zones_total": zones_total,
         "zones_with_data": int(fc_zone_count(fc)),
     }
-    written = publish.write_gold(fc, history_json, dq_report, run_meta)
+    written = publish.write_gold(fc, history_json, dq_report, run_meta, scores)
 
     return {
         "run_meta": run_meta,
@@ -64,6 +70,7 @@ def run_pipeline() -> dict:
         "outputs": written,
         "indicators": run_meta["indicators"],
         "history_rows": int(len(hist)),
+        "scores": scores,
     }
 
 

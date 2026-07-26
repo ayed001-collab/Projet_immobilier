@@ -126,6 +126,35 @@ intégration API↔web ✓.
 cd data/factory && source .venv/bin/activate && python run.py   # (FACTORY_TODAY=2026-07-26 pour un run déterministe)
 ```
 
+## Incrément 2 — Scoring Engine (Home & Investment Score explicables)
+
+Troisième incrément : un **moteur de scoring** partagé qui transforme les
+indicateurs en **Home Score** et **Investment Score** personnalisés, **expliqués**
+et **recalculés dynamiquement** selon les pondérations de l'utilisateur.
+
+- **`packages/scoring`** : package pur et versionné (`SCORING_VERSION`), réutilisé
+  par la Data Factory (normalisation batch) et l'API (pondération à la demande).
+- **Normalisation par rang percentile**, comparable entre zones, avec gestion du
+  sens (`higher/lower_better`).
+- **Home / Investment Score** = Σ pondérations × sous-scores, poids renormalisés
+  sur les critères disponibles (RG-S4) ; chaque score porte sa **décomposition**
+  (contribution de chaque critère — RG-S2), base de l'explicabilité.
+- **API** : `GET /api/weights`, `POST /api/score` (classement personnalisé,
+  **recalcul dynamique** — RG-S1), scores + décomposition embarqués dans les fiches.
+- **Carte** : couches « Home Score » / « Investment Score » (échelle 0–100) en tête
+  du sélecteur ; fiche avec les deux scores et leurs principaux facteurs.
+- **Non-régression** : tests de monotonie (augmenter le poids d'un critère fort
+  augmente le score), symétrie de normalisation, décomposition = score.
+
+Exemple de recalcul dynamique (données fixtures) : en pondération par défaut,
+**Gradignan** mène le Home Score (71) ; en priorité « 100 % transports »,
+**Bordeaux** passe en tête (92) et Gradignan chute (8) — le classement reflète
+réellement les priorités déclarées.
+
+**Vérifié** : `pytest` scoring 7/7 + factory 9/9 · pipeline end-to-end (scores +
+décomposition publiés) · smoke API (`/api/score`, `/api/weights`, recalcul
+dynamique) · `next build` + typecheck · intégration API↔web.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.

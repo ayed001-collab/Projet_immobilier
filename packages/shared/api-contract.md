@@ -39,9 +39,26 @@ Source de vérité des types front (`apps/web/lib/api.ts`).
 | `has_data` | boolean | |
 | `confidence_score` | number\|null | 0–100 (Data Confidence) |
 | `confidence_level` | string\|null | Élevée / Correcte / Limitée / Faible |
+| `home_score` | number\|null | Home Score par défaut (0–100) |
+| `investment_score` | number\|null | Investment Score par défaut (0–100) |
+| `scores` | object | `{ subscores, home: ProfileScore, investment: ProfileScore }` |
 | `indicators` | object | `{ [code]: IndicatorValue }` |
 
 `IndicatorValue` = `{ value, unit, millesime, source, nature, is_estimated, label, direction }`.
+`ProfileScore` = `{ score, scoring_version, breakdown: { criterion, label, weight, subscore, contribution }[] }`.
+
+## `GET /api/weights?profile=home|investment`
+```json
+{ "profile": "home", "scoring_version": "1.0.0",
+  "weights": { "education": 0.30, "transports": 0.25, "prix": 0.30, "revenu": 0.15 },
+  "criteria": { "education": { "label": "Éducation", "indicator": "ips_moyen", "direction": "higher_better" } } }
+```
+
+## `POST /api/score`
+Corps : `{ "profile": "home", "weights": { "transports": 1.0 } }` (`weights` optionnel).
+Réponse : `{ profile, scoring_version, weights_applied, results: RankedZone[] }` où
+`RankedZone` = `{ zone_id, nom_commune, rank, score, confidence_score, breakdown[] }`,
+trié par score décroissant — **recalcul dynamique** au changement de pondération (RG-S1).
 
 ## `GET /api/communes/{code}`
 Renvoie les `properties` de la commune **+ `history`** :

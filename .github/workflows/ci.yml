@@ -6,6 +6,20 @@ on:
   pull_request:
 
 jobs:
+  scoring:
+    name: Scoring (package partagé)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/scoring
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e . pytest
+      - run: python -m pytest -q
+
   data-factory:
     name: Data Factory (pipeline + tests)
     runs-on: ubuntu-latest
@@ -63,6 +77,12 @@ jobs:
           b = c.get("/api/communes/33063").json()
           assert b["indicators"]["prix_m2"]["value"] > 0
           assert b["confidence_score"] is not None
+          assert b["home_score"] is not None and b["scores"]["home"]["breakdown"]
+          r = c.post("/api/score", json={"profile": "home"}).json()
+          assert r["results"] and r["results"][0]["rank"] == 1
+          # Recalcul dynamique : 100% transports change le classement.
+          r2 = c.post("/api/score", json={"profile": "home", "weights": {"transports": 1.0}}).json()
+          assert r2["results"][0]["zone_id"] != r["results"][0]["zone_id"]
           print("API smoke OK")
           PY
 

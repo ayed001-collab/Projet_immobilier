@@ -29,6 +29,14 @@ def main() -> int:
     for code, v in r["dq_report"]["per_indicator"].items():
         tag = " (estimé)" if v["is_estimated"] else ""
         print(f"  - {code:<18} {v['dq_score']:>5}  [{v['nature']}]{tag}")
+    print(f"Scoring v{r['run_meta']['scoring_version']} — top par défaut :")
+    for profile in ("home", "investment"):
+        top = sorted(
+            ((z, s[profile]["score"]) for z, s in r["scores"].items()),
+            key=lambda kv: -kv[1],
+        )[:3]
+        libelle = "Home Score" if profile == "home" else "Investment Score"
+        print(f"  {libelle:<16}: " + ", ".join(f"{z}={sc}" for z, sc in top))
     print("Sorties (Gold)   :")
     print(json.dumps(r["outputs"], indent=2, ensure_ascii=False))
     return 0

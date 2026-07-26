@@ -15,9 +15,9 @@ export default async function Home() {
     <main>
       <header className="topbar">
         <div>
-          <h1>Copilote immobilier — indicateurs territoriaux</h1>
+          <h1>Copilote immobilier — Home & Investment Score</h1>
           <p className="subtitle">
-            Incrément 1 · Data Factory multi-sources ·{" "}
+            Incrément 2 · scoring explicable ·{" "}
             {meta
               ? `${meta.communes_with_data} communes · ${meta.indicators.length} indicateurs · DQ global ${meta.global_dq_score}`
               : "démarrez l'API pour charger les données"}

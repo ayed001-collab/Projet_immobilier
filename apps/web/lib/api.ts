@@ -11,12 +11,29 @@ export interface IndicatorValue {
   direction: string; // higher_better | lower_better | context
 }
 
+export interface ScoreContribution {
+  criterion: string;
+  label: string;
+  weight: number;
+  subscore: number;
+  contribution: number;
+}
+
+export interface ProfileScore {
+  score: number;
+  breakdown: ScoreContribution[];
+  scoring_version: string;
+}
+
 export interface CommuneProps {
   code_commune: string;
   nom_commune: string;
   has_data: boolean;
   confidence_score: number | null;
   confidence_level: string | null;
+  home_score?: number | null;
+  investment_score?: number | null;
+  scores?: { subscores?: Record<string, number>; home?: ProfileScore; investment?: ProfileScore };
   indicators: Record<string, IndicatorValue>;
   history?: Record<string, { millesime: string; value: number }[]>;
 }

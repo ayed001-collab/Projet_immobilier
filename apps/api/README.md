@@ -23,7 +23,13 @@ uvicorn app.main:app --reload --port 8000
 | GET | `/api/meta` | Résumé du run (indicateurs, DQ global, département, millésimes) |
 | GET | `/api/layers` | Couches disponibles (indicateurs + libellés/unités/sens/source) |
 | GET | `/api/communes` | FeatureCollection GeoJSON (communes + tous les indicateurs + confiance) |
-| GET | `/api/communes/{code}` | Fiche d'une commune : indicateurs, confiance et **historique** |
+| GET | `/api/communes/{code}` | Fiche d'une commune : indicateurs, confiance, **scores + décomposition** et historique |
+| GET | `/api/weights?profile=` | Pondérations par défaut d'un profil (home/investment) + libellés des critères |
+| POST | `/api/score` | **Classement personnalisé** : recalcul dynamique selon les pondérations |
+
+`POST /api/score` — corps : `{ "profile": "home", "weights": { "transports": 1.0 } }`
+(`weights` optionnel ⇒ pondérations par défaut). Renvoie les zones classées avec
+score, confiance et décomposition.
 
 Docs interactives : `http://localhost:8000/docs`.
 

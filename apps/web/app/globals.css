@@ -54,6 +54,14 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .conf-correcte { background: #fff3cd; color: #7a5b00; }
 .conf-limitée, .conf-faible { background: #fde2e1; color: #7a1c17; }
 
+.scores { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+.scorebadge { flex: 1; background: #f5f8fb; border: 1px solid #e3e9ef; border-radius: 8px; padding: 0.45rem 0.55rem; }
+.scorehead { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.74rem; }
+.scorehead strong { font-size: 1rem; color: #08519c; }
+.scorebar { height: 6px; background: #e3e9ef; border-radius: 3px; margin: 0.3rem 0 0.25rem; overflow: hidden; }
+.scorebar span { display: block; height: 100%; background: #08519c; }
+.scorebadge small { font-size: 0.66rem; color: #666; }
+
 .spark { margin: 0.2rem 0 0.7rem; }
 .spark svg { display: block; }
 .spark small { color: #444; }

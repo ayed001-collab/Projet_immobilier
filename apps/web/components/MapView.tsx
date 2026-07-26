@@ -7,6 +7,25 @@ import type { CommuneProps, Layer } from "@/lib/api";
 
 const RAMP = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 
+// Couches de score (calculées), affichées en tête du sélecteur.
+const SCORE_LAYERS: Layer[] = [
+  { code: "home_score", label: "Home Score", unit: "/100", category: "score",
+    nature: "score", direction: "higher_better", is_estimated: false,
+    source: "Scoring (résidence principale)" },
+  { code: "investment_score", label: "Investment Score", unit: "/100", category: "score",
+    nature: "score", direction: "higher_better", is_estimated: false,
+    source: "Scoring (investissement)" },
+];
+const SCORE_CODES = new Set(SCORE_LAYERS.map((l) => l.code));
+
+function valueForFeature(props: CommuneProps, code: string): number | undefined {
+  if (SCORE_CODES.has(code)) {
+    const v = (props as unknown as Record<string, unknown>)[code];
+    return typeof v === "number" ? v : undefined;
+  }
+  return props.indicators?.[code]?.value;
+}
+
 function ramp(min: number, max: number): (number | string)[] {
   const stops: (number | string)[] = [];
   RAMP.forEach((c, i) => {
@@ -19,9 +38,9 @@ export default function MapView() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const geoRef = useRef<GeoJSON.FeatureCollection | null>(null);
-  const [layers, setLayers] = useState<Layer[]>([]);
-  const [active, setActive] = useState<string>("prix_m2");
-  const [range, setRange] = useState<[number, number]>([0, 1]);
+  const [layers, setLayers] = useState<Layer[]>(SCORE_LAYERS);
+  const [active, setActive] = useState<string>("home_score");
+  const [range, setRange] = useState<[number, number]>([0, 100]);
   const [selected, setSelected] = useState<CommuneProps | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,21 +52,19 @@ export default function MapView() {
     const geo = geoRef.current;
     if (!map || !geo || !map.getSource("communes")) return;
 
+    const isScore = SCORE_CODES.has(code);
     const vals: number[] = [];
     const features = geo.features.map((f) => {
-      const ind = (f.properties as CommuneProps).indicators?.[code];
-      const v = ind?.value;
+      const v = valueForFeature(f.properties as CommuneProps, code);
       if (typeof v === "number") vals.push(v);
-      return {
-        ...f,
-        properties: { ...f.properties, _val: v ?? null, _has: v != null },
-      };
+      return { ...f, properties: { ...f.properties, _val: v ?? null, _has: v != null } };
     });
     const fc = { ...geo, features } as GeoJSON.FeatureCollection;
     (map.getSource("communes") as maplibregl.GeoJSONSource).setData(fc);
 
-    const min = vals.length ? Math.min(...vals) : 0;
-    const max = vals.length ? Math.max(...vals) : 1;
+    // Les scores ont une échelle fixe 0–100 ; les indicateurs, une échelle data.
+    const min = isScore ? 0 : vals.length ? Math.min(...vals) : 0;
+    const max = isScore ? 100 : vals.length ? Math.max(...vals) : 1;
     setRange([min, max]);
     map.setPaintProperty("communes-fill", "fill-color", [
       "case",
@@ -81,7 +98,7 @@ export default function MapView() {
         if (!layersRes.ok || !geoRes.ok) throw new Error("API");
         const ls: Layer[] = await layersRes.json();
         const geo: GeoJSON.FeatureCollection = await geoRes.json();
-        setLayers(ls);
+        setLayers([...SCORE_LAYERS, ...ls]);
         geoRef.current = geo;
 
         map.addSource("communes", { type: "geojson", data: geo });
@@ -100,7 +117,7 @@ export default function MapView() {
         map.on("mouseenter", "communes-fill", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "communes-fill", () => { map.getCanvas().style.cursor = ""; });
 
-        applyLayer("prix_m2");
+        applyLayer("home_score");
       } catch {
         setError("Impossible de charger les données. Data Factory exécutée et API démarrée ?");
       }
@@ -169,6 +186,10 @@ export default function MapView() {
           )}
           {selectedFull.has_data ? (
             <>
+              <div className="scores">
+                <ScoreBadge label="🏠 Home Score" data={selectedFull.scores?.home} />
+                <ScoreBadge label="📈 Investment" data={selectedFull.scores?.investment} />
+              </div>
               <Sparkline history={selectedFull.history?.prix_m2} />
               <ul className="indicators">
                 {Object.entries(selectedFull.indicators).map(([code, ind]) => (
@@ -192,6 +213,23 @@ export default function MapView() {
           )}
         </aside>
       )}
+    </div>
+  );
+}
+
+function ScoreBadge({ label, data }: { label: string; data?: import("@/lib/api").ProfileScore }) {
+  if (!data) return null;
+  const top = [...data.breakdown].sort((a, b) => b.contribution - a.contribution).slice(0, 2);
+  return (
+    <div className="scorebadge">
+      <div className="scorehead">
+        <span>{label}</span>
+        <strong>{data.score}/100</strong>
+      </div>
+      <div className="scorebar">
+        <span style={{ width: `${data.score}%` }} />
+      </div>
+      <small>Surtout : {top.map((t) => t.label).join(", ")}</small>
     </div>
   );
 }

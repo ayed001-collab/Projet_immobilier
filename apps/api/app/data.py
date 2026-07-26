@@ -42,8 +42,25 @@ def manifest() -> dict:
     return _read("manifest.json")  # type: ignore[return-value]
 
 
+@lru_cache(maxsize=1)
+def scores() -> dict:
+    return _read("communes_scores.json")  # type: ignore[return-value]
+
+
+def subscores() -> dict:
+    """{zone: {critère: sous-score}} pour le recalcul dynamique (API)."""
+    return {z: s.get("subscores", {}) for z, s in scores().items()}
+
+
+def name_by_zone() -> dict:
+    return {
+        str(f["properties"]["code_commune"]): f["properties"].get("nom_commune")
+        for f in geojson().get("features", [])
+    }
+
+
 def reload_cache() -> None:
-    for fn in (geojson, layers, history, manifest):
+    for fn in (geojson, layers, history, manifest, scores):
         fn.cache_clear()
 
 

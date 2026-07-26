@@ -35,21 +35,27 @@ def _indicators_by_zone(current: pd.DataFrame) -> dict[str, dict]:
     return out
 
 
-def build_geojson(current, confidence, geometries) -> dict:
+def build_geojson(current, confidence, geometries, scores: dict | None = None) -> dict:
     ind_by_zone = _indicators_by_zone(current)
     conf_by_zone = {r["zone_id"]: r for r in confidence.to_dict("records")}
+    scores = scores or {}
 
     features = []
     for feat in geometries.get("features", []):
         code = str(feat["properties"]["code_commune"])
         indicators = ind_by_zone.get(code, {})
         conf = conf_by_zone.get(code)
+        sc = scores.get(code, {})
         props = {
             "code_commune": code,
             "nom_commune": feat["properties"].get("nom_commune"),
             "has_data": bool(indicators),
             "confidence_score": conf["confidence_score"] if conf else None,
             "confidence_level": conf["confidence_level"] if conf else None,
+            # Scores par défaut (aplatis) pour la coloration directe de la carte.
+            "home_score": sc.get("home", {}).get("score"),
+            "investment_score": sc.get("investment", {}).get("score"),
+            "scores": sc,  # sous-scores + décomposition (fiche explicable)
             "indicators": indicators,
         }
         features.append(
@@ -78,7 +84,10 @@ def build_layers() -> list[dict]:
     ]
 
 
-def write_gold(geojson, history_json, dq_report, run_meta, gold_dir: Path | None = None) -> dict:
+def write_gold(
+    geojson, history_json, dq_report, run_meta, scores: dict | None = None,
+    gold_dir: Path | None = None,
+) -> dict:
     gold_dir = gold_dir or config.GOLD_DIR
     gold_dir.mkdir(parents=True, exist_ok=True)
 
@@ -91,6 +100,7 @@ def write_gold(geojson, history_json, dq_report, run_meta, gold_dir: Path | None
         "geojson": _w("communes_indicators.geojson", geojson),
         "history": _w("history.json", history_json),
         "layers": _w("layers.json", build_layers()),
+        "scores": _w("communes_scores.json", scores or {}),
         "dq_report": _w("dq_report.json", dq_report),
     }
     manifest = {**run_meta, "dq_report": dq_report, "outputs": written}
