@@ -138,6 +138,21 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .delta.up { color: #1b5e34; background: #d8f3dc; }
 .delta.down { color: #b30000; background: #fde2e1; }
 
+/* --- Simulateur d'investissement --- */
+.sim-controls { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; margin: 8px 0 14px; }
+@media (max-width: 560px) { .sim-controls { grid-template-columns: 1fr; } }
+.sim-controls select, .sim-controls input { padding: 8px; border: 1px solid #cbd3db; border-radius: 8px; background: #fff; color: #1a1a1a; font-size: .95rem; }
+.sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 640px) { .sim-grid { grid-template-columns: 1fr 1fr; } }
+.sim-grid > div { border: 1px solid #e6eaee; border-radius: 10px; padding: 10px 11px; display: flex; flex-direction: column; }
+.sim-grid .k { font-size: .72rem; color: #778; }
+.sim-grid b { font-size: 1.25rem; color: #08519c; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.sim-grid small { font-size: .68rem; color: #99a; }
+.sim-grid .cf.pos { background: #e3f4e8; border-color: #b6e0c2; }
+.sim-grid .cf.neg { background: #fde2e1; border-color: #f3c4c1; }
+.sim-grid .cf.pos b { color: #1b7a3c; }
+.sim-grid .cf.neg b { color: #b30000; }
+
 /* --- Rapport imprimable (Export PDF) --- */
 .print-report { display: none; }
 @media print {

@@ -85,6 +85,9 @@ jobs:
           assert r2["results"][0]["zone_id"] != r["results"][0]["zone_id"]
           fin = c.post("/api/finance", json={"revenus_mensuels": 5200, "apport": 60000}).json()
           assert fin["budget_achat"] > 0 and fin["capacite_emprunt"] > 0
+          sm = c.post("/api/simulate", json={"prix": 259000, "surface": 70, "loyer_m2": 12.2, "apport": 60000}).json()
+          assert sm["rendement_brut"] > 0 and "cashflow_mensuel" in sm
+          assert c.post("/api/simulate", json={"prix": 0, "surface": 70, "loyer_m2": 12}).status_code == 400
           rs = c.post("/api/score", json={"profile": "home", "budget": 300000, "surface": 70}).json()
           assert all("within_budget" in x for x in rs["results"])
           cmp = c.post("/api/compare", json={"codes": ["33063", "33192"], "profile": "home"}).json()

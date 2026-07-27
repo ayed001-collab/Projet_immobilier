@@ -43,6 +43,66 @@ def capacite_emprunt(mensualite: float, taux_annuel: float, duree_annees: int) -
     return mensualite * (1 - (1 + i) ** (-n)) / i
 
 
+def mensualite_credit(capital: float, taux_annuel: float, duree_annees: int) -> float:
+    """Mensualité d'un crédit amortissable (inverse de la capacité d'emprunt)."""
+    n = duree_annees * 12
+    i = taux_annuel / 100 / 12
+    if capital <= 0:
+        return 0.0
+    if i <= 0:
+        return capital / n
+    return capital * i / (1 - (1 + i) ** (-n))
+
+
+def simulate_investment(
+    prix: float,
+    surface: float,
+    loyer_m2: float,
+    apport: float = 0.0,
+    taux_annuel: float = 3.5,
+    duree_annees: int = 20,
+    charges_pct: float = 0.20,      # gestion, entretien, copro, assurances (part du loyer)
+    vacancy_pct: float = 0.05,      # vacance locative
+    taxe_fonciere_pct: float = 0.008,  # proxy annuel (part du prix) — indicatif
+    bien_neuf: bool = False,
+) -> dict:
+    """Simulation d'investissement locatif (estimation indicative, hors fiscalité détaillée)."""
+    taux_frais = FRAIS_NEUF if bien_neuf else FRAIS_ANCIEN
+    frais = prix * taux_frais
+    cout_total = prix + frais
+    emprunt = max(0.0, cout_total - apport)
+    mensualite = mensualite_credit(emprunt, taux_annuel, duree_annees)
+
+    loyer_mensuel = loyer_m2 * surface
+    loyer_annuel_brut = loyer_mensuel * 12
+    loyer_effectif = loyer_annuel_brut * (1 - vacancy_pct)
+    charges = loyer_effectif * charges_pct
+    taxe_fonciere = prix * taxe_fonciere_pct
+    revenu_net_avant_credit = loyer_effectif - charges - taxe_fonciere
+
+    credit_annuel = mensualite * 12
+    cashflow_annuel = revenu_net_avant_credit - credit_annuel
+
+    rendement_brut = loyer_annuel_brut / cout_total * 100 if cout_total else 0
+    rendement_net = revenu_net_avant_credit / cout_total * 100 if cout_total else 0
+
+    return {
+        "prix": round(prix), "frais": round(frais), "cout_total": round(cout_total),
+        "emprunt": round(emprunt), "mensualite_credit": round(mensualite),
+        "loyer_mensuel": round(loyer_mensuel), "loyer_annuel_brut": round(loyer_annuel_brut),
+        "charges_annuelles": round(charges), "taxe_fonciere": round(taxe_fonciere),
+        "rendement_brut": round(rendement_brut, 2), "rendement_net": round(rendement_net, 2),
+        "cashflow_mensuel": round(cashflow_annuel / 12), "cashflow_annuel": round(cashflow_annuel),
+        "hypotheses": {
+            "taux_annuel": taux_annuel, "duree_annees": duree_annees,
+            "charges_pct": charges_pct, "vacancy_pct": vacancy_pct,
+            "taxe_fonciere_pct": taxe_fonciere_pct,
+            "avertissement": "Estimation indicative — hors fiscalité (LMNP, déficit foncier…) "
+            "et charges spécifiques. Ne vaut pas conseil.",
+        },
+    }
+
+
 def compute(
     revenus_mensuels: float,
     apport: float = 0.0,

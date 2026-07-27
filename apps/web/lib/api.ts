@@ -154,6 +154,21 @@ export const fetchWeights = (profile: string) =>
 export const postCompare = (body: { codes: string[]; profile: string }) =>
   post<CompareResponse>("/api/compare", body);
 
+// --- Simulateur d'investissement ------------------------------------------
+export interface SimInput {
+  prix: number; surface: number; loyer_m2: number; apport: number;
+  taux_annuel: number; duree_annees: number; charges_pct: number; vacancy_pct: number;
+}
+export interface SimResult {
+  prix: number; frais: number; cout_total: number; emprunt: number;
+  mensualite_credit: number; loyer_mensuel: number; loyer_annuel_brut: number;
+  charges_annuelles: number; taxe_fonciere: number;
+  rendement_brut: number; rendement_net: number;
+  cashflow_mensuel: number; cashflow_annuel: number;
+  hypotheses: Record<string, unknown>;
+}
+export const postSimulate = (input: SimInput) => post<SimResult>("/api/simulate", input);
+
 // --- Projet persistant ----------------------------------------------------
 export interface ProjectPayload {
   profile: string;

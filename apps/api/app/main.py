@@ -107,6 +107,30 @@ def finance_endpoint(req: FinanceRequest) -> dict:
     }}
 
 
+class SimulateRequest(BaseModel):
+    prix: float
+    surface: float
+    loyer_m2: float
+    apport: float = 0.0
+    taux_annuel: float = 3.5
+    duree_annees: int = 20
+    charges_pct: float = 0.20
+    vacancy_pct: float = 0.05
+    bien_neuf: bool = False
+
+
+@app.post("/api/simulate")
+def simulate(req: SimulateRequest) -> dict:
+    """Simulation d'investissement locatif (rendement brut/net, mensualité, cash-flow)."""
+    if req.prix <= 0 or req.surface <= 0 or req.loyer_m2 <= 0:
+        raise HTTPException(status_code=400, detail="Prix, surface et loyer doivent être positifs.")
+    return finance.simulate_investment(
+        prix=req.prix, surface=req.surface, loyer_m2=req.loyer_m2, apport=req.apport,
+        taux_annuel=req.taux_annuel, duree_annees=req.duree_annees,
+        charges_pct=req.charges_pct, vacancy_pct=req.vacancy_pct, bien_neuf=req.bien_neuf,
+    )
+
+
 class ScoreRequest(BaseModel):
     profile: str = "home"
     weights: dict[str, float] | None = None  # pondérations personnalisées (optionnel)
