@@ -54,6 +54,46 @@ def _prix_by_zone() -> dict:
     }
 
 
+def _props_by_zone() -> dict:
+    return {f["properties"]["code_commune"]: f["properties"] for f in data.geojson()["features"]}
+
+
+def enrich_favorites(codes: list[str]) -> list[dict]:
+    """Favoris enrichis (nom, scores, confiance, prix) pour l'affichage."""
+    props = _props_by_zone()
+    out = []
+    for code in codes:
+        p = props.get(str(code))
+        if not p:
+            continue
+        out.append({
+            "code_commune": str(code),
+            "nom_commune": p.get("nom_commune"),
+            "home_score": p.get("home_score"),
+            "investment_score": p.get("investment_score"),
+            "confidence_score": p.get("confidence_score"),
+            "prix_m2": (p.get("indicators", {}).get("prix_m2") or {}).get("value"),
+        })
+    return out
+
+
+def toggle_favorite(pid: str, code: str) -> dict | None:
+    """Ajoute/retire une commune des favoris du projet (dans le payload, sans rebaser le snapshot)."""
+    row = _row(pid)
+    if row is None:
+        return None
+    payload = json.loads(row[3])
+    favs = [str(c) for c in payload.get("favorites", [])]
+    code = str(code)
+    payload["favorites"] = [c for c in favs if c != code] if code in favs else favs + [code]
+    with _conn() as con:
+        con.execute(
+            "UPDATE projects SET updated_at=?, payload=? WHERE id=?",
+            (_now(), json.dumps(payload), pid),
+        )
+    return get(pid)
+
+
 def _snapshot(payload: dict) -> list[dict]:
     """Classement figé à la sauvegarde (avec prix, pour expliquer les évolutions)."""
     ranked = ranking.compute(
@@ -133,6 +173,7 @@ def get(pid: str) -> dict | None:
         "millesime_ref": mref,
         "current_millesime": _millesime_ref(),
         "results": current,
+        "favorites": enrich_favorites([str(c) for c in payload.get("favorites", [])]),
     }
 
 

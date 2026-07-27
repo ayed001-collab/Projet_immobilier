@@ -253,6 +253,7 @@ class ProjectPayload(BaseModel):
     surface: float | None = None
     finance: dict | None = None  # entrées du module financement (mémo)
     label: str | None = None
+    favorites: list[str] = []  # codes communes mis en favori
 
 
 def _validate_profile(p: str) -> None:
@@ -274,6 +275,19 @@ def read_project(pid: str) -> dict:
     if proj is None:
         raise HTTPException(status_code=404, detail="Projet introuvable.")
     return proj
+
+
+class FavoriteRequest(BaseModel):
+    code: str
+
+
+@app.post("/api/projects/{pid}/favorites")
+def toggle_favorite(pid: str, req: FavoriteRequest) -> dict:
+    """Ajoute/retire une commune des favoris du projet ; renvoie les favoris enrichis."""
+    proj = _guard(lambda: projects.toggle_favorite(pid, req.code))
+    if proj is None:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+    return {"id": pid, "favorites": proj["favorites"]}
 
 
 @app.get("/api/projects/{pid}/alerts")

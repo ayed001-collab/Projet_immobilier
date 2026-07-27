@@ -177,6 +177,15 @@ export interface ProjectPayload {
   surface?: number | null;
   finance?: Record<string, unknown> | null;
   label?: string | null;
+  favorites?: string[];
+}
+export interface FavoriteZone {
+  code_commune: string;
+  nom_commune: string;
+  home_score: number | null;
+  investment_score: number | null;
+  confidence_score: number | null;
+  prix_m2: number | null;
 }
 export interface Project {
   id: string;
@@ -188,6 +197,7 @@ export interface Project {
   millesime_ref: string | null;
   current_millesime: string | null;
   results: RankedZone[];
+  favorites: FavoriteZone[];
 }
 
 async function put<T>(path: string, body: unknown): Promise<T> {
@@ -257,6 +267,8 @@ export interface ProjectAlerts {
 export const createProject = (p: ProjectPayload) => post<Project>("/api/projects", p);
 export const getProject = (id: string) => get<Project>(`/api/projects/${id}`);
 export const getProjectAlerts = (id: string) => get<ProjectAlerts>(`/api/projects/${id}/alerts`);
+export const toggleFavorite = (id: string, code: string) =>
+  post<{ id: string; favorites: FavoriteZone[] }>(`/api/projects/${id}/favorites`, { code });
 export const updateProject = (id: string, p: ProjectPayload) =>
   put<Project>(`/api/projects/${id}`, p);
 export const postFinance = (input: FinanceInput) =>
