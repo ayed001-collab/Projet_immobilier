@@ -86,7 +86,7 @@ def build_layers() -> list[dict]:
 
 def write_gold(
     geojson, history_json, dq_report, run_meta, scores: dict | None = None,
-    gold_dir: Path | None = None,
+    admin_sources: list | None = None, gold_dir: Path | None = None,
 ) -> dict:
     gold_dir = gold_dir or config.GOLD_DIR
     gold_dir.mkdir(parents=True, exist_ok=True)
@@ -101,6 +101,7 @@ def write_gold(
         "history": _w("history.json", history_json),
         "layers": _w("layers.json", build_layers()),
         "scores": _w("communes_scores.json", scores or {}),
+        "admin_sources": _w("admin_sources.json", admin_sources or []),
         "dq_report": _w("dq_report.json", dq_report),
     }
     manifest = {**run_meta, "dq_report": dq_report, "outputs": written}

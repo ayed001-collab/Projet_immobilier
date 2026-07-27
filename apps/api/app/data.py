@@ -47,6 +47,11 @@ def scores() -> dict:
     return _read("communes_scores.json")  # type: ignore[return-value]
 
 
+@lru_cache(maxsize=1)
+def admin_sources() -> list:
+    return _read("admin_sources.json")  # type: ignore[return-value]
+
+
 def subscores() -> dict:
     """{zone: {critère: sous-score}} pour le recalcul dynamique (API)."""
     return {z: s.get("subscores", {}) for z, s in scores().items()}
@@ -60,7 +65,7 @@ def name_by_zone() -> dict:
 
 
 def reload_cache() -> None:
-    for fn in (geojson, layers, history, manifest, scores):
+    for fn in (geojson, layers, history, manifest, scores, admin_sources):
         fn.cache_clear()
 
 

@@ -79,6 +79,13 @@ et `badges` = `{ meilleur_profil, meilleur_rapport_qualite_prix, meilleur_potent
   `results` = `RankedZone[]` enrichis de `score_delta` / `rank_delta` (évolution vs snapshot).
 - `PUT /api/projects/{id}` — met à jour le projet et **rebase** le snapshot.
 
+## Back-office data (Épic 9)
+- `GET /api/admin/sources` → `{ global_dq_score, run_finished, scoring_version, sources: AdminSource[] }`
+  où `AdminSource` = `{ source, indicators, frequency, frequency_label, last_millesime, millesimes,
+  last_collection, next_collection, dq_score, freshness, status, status_label }`.
+- `GET /api/admin/runs` → `{ run_started, run_finished, departement, dvf_millesimes, outputs, dq_report }`.
+- `POST /api/admin/reload` → vide le cache de lecture après un run ; renvoie `{ status, meta }`.
+
 ## `GET /api/communes/{code}`
 Renvoie les `properties` de la commune **+ `history`** :
 ```json

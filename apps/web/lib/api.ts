@@ -186,6 +186,42 @@ async function put<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+// --- Back-office data -----------------------------------------------------
+export interface AdminSource {
+  source: string;
+  indicators: string[];
+  frequency: string;
+  frequency_label: string;
+  last_millesime: string | null;
+  millesimes: string[];
+  last_collection: string;
+  next_collection: string;
+  dq_score: number | null;
+  freshness: number;
+  status: "ok" | "warning" | "unknown";
+  status_label: string;
+}
+export interface AdminSourcesResponse {
+  global_dq_score: number | null;
+  run_finished: string | null;
+  scoring_version: string | null;
+  sources: AdminSource[];
+}
+export interface AdminRuns {
+  run_started: string | null;
+  run_finished: string | null;
+  departement: string | null;
+  dvf_millesimes: string[] | null;
+  outputs: Record<string, string> | null;
+  dq_report: {
+    global_dq_score: number;
+    per_indicator: Record<string, { label: string; nature: string; dq_score: number; is_estimated: boolean; freshness: number; completeness: number; volume: number }>;
+  } | null;
+}
+export const fetchAdminSources = () => get<AdminSourcesResponse>("/api/admin/sources");
+export const fetchAdminRuns = () => get<AdminRuns>("/api/admin/runs");
+export const postAdminReload = () => post<{ status: string; meta: Meta }>("/api/admin/reload", {});
+
 export const createProject = (p: ProjectPayload) => post<Project>("/api/projects", p);
 export const getProject = (id: string) => get<Project>(`/api/projects/${id}`);
 export const updateProject = (id: string, p: ProjectPayload) =>

@@ -31,6 +31,9 @@ uvicorn app.main:app --reload --port 8000
 | POST | `/api/projects` | **Sauvegarder** un projet (fige un snapshot du classement) |
 | GET | `/api/projects/{id}` | **Recharger** un projet : critères + classement courant + delta |
 | PUT | `/api/projects/{id}` | Mettre à jour un projet (nouvelle référence) |
+| GET | `/api/admin/sources` | **Back-office** : supervision des sources (statut, DQ, fraîcheur) |
+| GET | `/api/admin/runs` | Détail du dernier run (lineage + DQ par indicateur) |
+| POST | `/api/admin/reload` | Recharge le cache de lecture après un run de la Data Factory |
 
 Persistance : **SQLite** (`PROJECTS_DB`, défaut `apps/api/projects.db`), sans service
 externe ni authentification à ce stade — l'identifiant fait office de clé d'accès.

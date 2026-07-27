@@ -9,7 +9,7 @@ import pandas as pd
 
 from scoring import SCORING_VERSION
 
-from . import config, confidence, derived, geo, history, publish, quality, scoring_step
+from . import admin, config, confidence, derived, geo, history, publish, quality, scoring_step
 from .sources import DVFSource, default_sources
 from .sources.base import now_iso
 
@@ -48,6 +48,9 @@ def run_pipeline() -> dict:
     # Scoring (batch) : normalisation + Home/Investment par défaut + sous-scores
     scores = scoring_step.compute(current)
 
+    # Supervision des sources (back-office)
+    admin_sources = admin.build(current, dq_report, collected_at=run_started)
+
     # [9] Publication (Gold)
     fc = publish.build_geojson(current, conf, geometries, scores)
     history_json = publish.build_history(hist)
@@ -62,7 +65,7 @@ def run_pipeline() -> dict:
         "zones_total": zones_total,
         "zones_with_data": int(fc_zone_count(fc)),
     }
-    written = publish.write_gold(fc, history_json, dq_report, run_meta, scores)
+    written = publish.write_gold(fc, history_json, dq_report, run_meta, scores, admin_sources)
 
     return {
         "run_meta": run_meta,
