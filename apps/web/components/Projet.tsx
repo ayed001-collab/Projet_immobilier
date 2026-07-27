@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  fetchWeights, postFinance, postScore,
+  fetchWeights, postFinance, postScore, createProject, getProject, updateProject,
   type WeightsResponse, type FinanceResult, type ScoreResponse,
 } from "@/lib/api";
 import ResultsMap from "./ResultsMap";
@@ -15,7 +15,7 @@ const TITLES: Record<ProfileType, string> = {
   investment: "📈 Investir",
 };
 
-export default function Projet({ type }: { type: ProfileType }) {
+export default function Projet({ type, initialId }: { type: ProfileType; initialId?: string }) {
   const [step, setStep] = useState(1);
   const [w, setW] = useState<WeightsResponse | null>(null);
   const [importance, setImportance] = useState<Record<string, number>>({});
@@ -30,17 +30,51 @@ export default function Projet({ type }: { type: ProfileType }) {
   const [results, setResults] = useState<ScoreResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(initialId ?? null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchWeights(type)
       .then((res) => {
         setW(res);
-        const imp: Record<string, number> = {};
-        Object.entries(res.weights).forEach(([k, v]) => (imp[k] = Math.round(v * 100)));
-        setImportance(imp);
+        setImportance((prev) => {
+          if (Object.keys(prev).length) return prev; // ne pas écraser un projet chargé
+          const imp: Record<string, number> = {};
+          Object.entries(res.weights).forEach(([k, v]) => (imp[k] = Math.round(v * 100)));
+          return imp;
+        });
       })
       .catch(() => setError("API indisponible — démarrez apps/api."));
   }, [type]);
+
+  // Rechargement d'un projet sauvegardé (?id=…).
+  useEffect(() => {
+    if (!initialId) return;
+    getProject(initialId)
+      .then((proj) => {
+        const pl = proj.payload;
+        if (pl.weights) {
+          const imp: Record<string, number> = {};
+          Object.entries(pl.weights).forEach(([k, v]) => (imp[k] = Math.round(v)));
+          setImportance(imp);
+        }
+        if (pl.surface) setSurface(pl.surface);
+        const fin = pl.finance as Record<string, number> | undefined;
+        if (fin) {
+          if (fin.apport != null) setApport(fin.apport);
+          if (fin.revenus != null) setRevenus(fin.revenus);
+          if (fin.taux != null) setTaux(fin.taux);
+          if (fin.duree != null) setDuree(fin.duree);
+        }
+        setResults({
+          profile: proj.payload.profile, scoring_version: "", weights_applied: {},
+          budget: proj.payload.budget ?? null, surface: proj.payload.surface ?? null,
+          results: proj.results,
+        });
+        setStep(3);
+      })
+      .catch(() => setError("Projet introuvable."));
+  }, [initialId]);
 
   const computeFinance = useCallback(async () => {
     try {
@@ -72,6 +106,34 @@ export default function Projet({ type }: { type: ProfileType }) {
       setError("Erreur de calcul du classement.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveProject() {
+    setSaving(true);
+    setError(null);
+    const payload = {
+      profile: type,
+      weights: importance,
+      budget: finance?.budget_achat ?? null,
+      surface,
+      finance: { apport, revenus, taux, duree },
+    };
+    try {
+      const proj = savedId
+        ? await updateProject(savedId, payload)
+        : await createProject(payload);
+      setSavedId(proj.id);
+      setResults((r) => (r ? { ...r, results: proj.results } : r));
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("id", proj.id);
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {
+      setError("Erreur lors de la sauvegarde du projet.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -173,8 +235,19 @@ export default function Projet({ type }: { type: ProfileType }) {
           <div className="results-list">
             <div className="results-head">
               <h2>Vos zones recommandées</h2>
-              <button onClick={() => setStep(2)}>Ajuster</button>
+              <div className="rhead-actions">
+                <button onClick={() => setStep(2)}>Ajuster</button>
+                <button className="save" onClick={saveProject} disabled={saving}>
+                  {saving ? "…" : savedId ? "Mettre à jour" : "💾 Sauvegarder"}
+                </button>
+              </div>
             </div>
+            {savedId && (
+              <p className="saved">
+                ✓ Projet sauvegardé — conservez ce lien pour suivre l'évolution :{" "}
+                <code>?id={savedId}</code>
+              </p>
+            )}
             {finance && (
               <p className="ctx">
                 Budget d'achat ~ {eur(finance.budget_achat)} € · bien-type {surface} m²
@@ -186,6 +259,11 @@ export default function Projet({ type }: { type: ProfileType }) {
                   <div className="rrow">
                     <span className="rrank">{r.rank}</span>
                     <span className="rname">{r.nom_commune}</span>
+                    {r.score_delta != null && r.score_delta !== 0 && (
+                      <span className={`delta ${r.score_delta > 0 ? "up" : "down"}`}>
+                        {r.score_delta > 0 ? "▲" : "▼"} {Math.abs(r.score_delta)}
+                      </span>
+                    )}
                     <span className="rscore">{r.score}<small>/100</small></span>
                   </div>
                   <div className="rmeta">

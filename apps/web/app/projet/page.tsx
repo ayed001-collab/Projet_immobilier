@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export default function ProjetPage({
   searchParams,
 }: {
-  searchParams: { type?: string };
+  searchParams: { type?: string; id?: string };
 }) {
   const type = searchParams.type === "investment" ? "investment" : "home";
-  return <Projet type={type} />;
+  return <Projet type={type} initialId={searchParams.id} />;
 }
