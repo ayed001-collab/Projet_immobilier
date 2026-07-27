@@ -95,7 +95,10 @@ jobs:
           got = c.get(f"/api/projects/{proj['id']}").json()
           assert got["id"] == proj["id"] and got["results"]
           assert all("score_delta" in r for r in got["results"])
+          al = c.get(f"/api/projects/{proj['id']}/alerts").json()
+          assert "count" in al and isinstance(al["events"], list)  # 0 sans changement de données
           assert c.get("/api/projects/deadbeef0000").status_code == 404
+          assert c.get("/api/projects/deadbeef0000/alerts").status_code == 404
           # Back-office data.
           adm = c.get("/api/admin/sources").json()
           assert adm["sources"] and all("status" in s for s in adm["sources"])

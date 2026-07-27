@@ -138,6 +138,17 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .delta.up { color: #1b5e34; background: #d8f3dc; }
 .delta.down { color: #b30000; background: #fde2e1; }
 
+/* --- Alertes projet --- */
+.alerts { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 10px; padding: 0.6rem 0.7rem; margin: 0.4rem 0 0.8rem; }
+.alerts-head { font-weight: 600; font-size: 0.82rem; display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.alerts-head small { color: #888; font-weight: 400; font-size: 0.68rem; white-space: nowrap; }
+.alerts ul { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+.alert { font-size: 0.76rem; padding: 0.25rem 0; border-top: 1px solid #f0e6c8; color: #4a3f1e; }
+.atag { display: inline-block; min-width: 44px; text-align: center; font-size: 0.64rem; text-transform: uppercase; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 4px; margin-right: 0.3rem; background: #e7d9a8; color: #6b551a; }
+.alert-budget .atag { background: #f8d0cc; color: #7a1c17; }
+.alert-score .atag { background: #cfe0f5; color: #0f3c66; }
+.noalert { font-size: 0.78rem; color: #778; background: #f2f4f6; padding: 0.5rem 0.7rem; border-radius: 8px; }
+
 /* --- Back-office data --- */
 .admin { min-height: 100vh; }
 .admin .reload { border: 1px solid #cfe0f5; background: #fff; color: #08519c; padding: 0.45rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.82rem; white-space: nowrap; }

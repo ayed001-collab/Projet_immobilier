@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   fetchWeights, postFinance, postScore, createProject, getProject, updateProject,
-  type WeightsResponse, type FinanceResult, type ScoreResponse,
+  getProjectAlerts,
+  type WeightsResponse, type FinanceResult, type ScoreResponse, type ProjectAlerts,
 } from "@/lib/api";
 import ResultsMap from "./ResultsMap";
 
@@ -32,6 +33,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(initialId ?? null);
   const [saving, setSaving] = useState(false);
+  const [alerts, setAlerts] = useState<ProjectAlerts | null>(null);
 
   useEffect(() => {
     fetchWeights(type)
@@ -74,6 +76,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
         setStep(3);
       })
       .catch(() => setError("Projet introuvable."));
+    getProjectAlerts(initialId).then(setAlerts).catch(() => {});
   }, [initialId]);
 
   const computeFinance = useCallback(async () => {
@@ -252,6 +255,24 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
               <p className="ctx">
                 Budget d'achat ~ {eur(finance.budget_achat)} € · bien-type {surface} m²
               </p>
+            )}
+            {alerts && alerts.count > 0 && (
+              <div className="alerts">
+                <div className="alerts-head">
+                  🔔 {alerts.count} évolution{alerts.count > 1 ? "s" : ""} depuis votre sauvegarde
+                  <small>{alerts.snapshot_millesime?.slice(0, 10)} → {alerts.current_millesime?.slice(0, 10)}</small>
+                </div>
+                <ul>
+                  {alerts.events.map((e, i) => (
+                    <li key={i} className={`alert alert-${e.type}`}>
+                      <span className="atag">{e.type}</span> {e.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {alerts && alerts.count === 0 && (
+              <p className="noalert">🔔 Aucune évolution significative depuis votre sauvegarde.</p>
             )}
             <ol>
               {results.results.map((r) => (

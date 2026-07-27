@@ -222,8 +222,26 @@ export const fetchAdminSources = () => get<AdminSourcesResponse>("/api/admin/sou
 export const fetchAdminRuns = () => get<AdminRuns>("/api/admin/runs");
 export const postAdminReload = () => post<{ status: string; meta: Meta }>("/api/admin/reload", {});
 
+export interface AlertEvent {
+  type: "prix" | "score" | "rang" | "budget";
+  zone_id: string;
+  nom_commune: string;
+  severity: number;
+  message: string;
+  score_delta?: number;
+}
+export interface ProjectAlerts {
+  id: string;
+  snapshot_at: string;
+  snapshot_millesime: string | null;
+  current_millesime: string | null;
+  count: number;
+  events: AlertEvent[];
+}
+
 export const createProject = (p: ProjectPayload) => post<Project>("/api/projects", p);
 export const getProject = (id: string) => get<Project>(`/api/projects/${id}`);
+export const getProjectAlerts = (id: string) => get<ProjectAlerts>(`/api/projects/${id}/alerts`);
 export const updateProject = (id: string, p: ProjectPayload) =>
   put<Project>(`/api/projects/${id}`, p);
 export const postFinance = (input: FinanceInput) =>
