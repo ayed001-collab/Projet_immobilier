@@ -91,15 +91,40 @@
   svg.map .region.has-data.sel{fill:color-mix(in srgb,var(--accent) 48%,transparent)}
   svg.map .region:focus-visible{outline:none;stroke:var(--accent);stroke-width:2.4}
   svg.map .locus{fill:none;stroke:var(--ink);stroke-width:2}
-  svg.map .leader{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3;opacity:.5}
+  svg.map .leader{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3;opacity:.5;pointer-events:none}
+  svg.map .crown{pointer-events:none}
   svg.map .inset{fill:var(--card);stroke:var(--line);stroke-width:1}
   svg.map .cell{cursor:pointer;transition:opacity .12s;stroke:var(--card);stroke-width:1.3}
   svg.map .cell:hover{opacity:.82}
   svg.map .cell.sel{stroke:var(--ink);stroke-width:2.4}
   svg.map .clab{font-family:var(--sans);font-size:9.5px;font-weight:600;fill:var(--ink);
     paint-order:stroke;stroke:var(--card);stroke-width:2.2px;pointer-events:none}
+  svg.map .clab.sm{font-size:7px;font-weight:600;fill:var(--ink-soft);stroke-width:1.8px}
+  svg.map .crown{fill:none;stroke-width:1.2;stroke-dasharray:4 4;opacity:.5}
+  svg.map .crownlab{font-family:var(--mono);font-size:8px;letter-spacing:.04em;
+    text-transform:uppercase;opacity:.8;pointer-events:none}
   svg.map .ftitle{font-family:var(--mono);font-size:9px;fill:var(--muted);letter-spacing:.05em;
     text-transform:uppercase;pointer-events:none}
+  .ringchip .rdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .horsband{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .horsband .hb-t{font-size:.78rem;font-weight:600;color:var(--ink-soft);margin-bottom:8px}
+  .horsband .hb-t small{color:var(--muted);font-weight:400}
+  .horsband .rdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .hb-row{display:flex;flex-wrap:wrap;gap:6px}
+  .htile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;cursor:pointer;
+    border:1px solid var(--line);background:var(--card);border-radius:9px;padding:6px 10px;color:var(--ink)}
+  .htile b{font-size:.8rem}
+  .htile span{font-size:.72rem;color:var(--accent);font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  .htile span small{color:var(--muted)}
+  .htile:hover{border-color:var(--accent)}
+  .htile.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+  .ringsum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+  .ringsum .rsum{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+  .ringsum .rdot{width:10px;height:10px;border-radius:50%;flex:none}
+  .ringsum .rsl{font-size:.74rem;color:var(--ink-soft);flex:1}
+  .ringsum .rsn{font-size:.68rem;color:var(--muted);font-family:var(--mono)}
+  .ringsum b{font-size:.95rem;color:var(--accent);font-variant-numeric:tabular-nums}
+  .ringsum b small{font-size:.62rem;color:var(--muted);font-weight:500}
   .legend{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:.74rem;color:var(--muted);font-family:var(--mono)}
   .ramp{height:10px;flex:1;border-radius:3px;min-width:80px}
   .legend .lab{white-space:nowrap}
@@ -256,8 +281,8 @@
 </header>
 
 <div class="notice"><div class="wrap">
-  Démo hors-ligne — <b>6 communes de Gironde</b> (échantillon fixtures). Chaque chiffre est <b>sourcé et daté</b> ;
-  le scoring est recalculé dans votre navigateur. Périmètre réduit, données de démonstration.
+  Démo hors-ligne — carte du <b>Grand Paris</b> : arrondissements, petite &amp; grande couronne, et villes
+  hors couronnes (données réelles Gironde). Notes de ville <b>illustratives</b>, recalculées dans votre navigateur.
 </div></div>
 
 <nav class="tabs"><div class="wrap" role="tablist">
@@ -274,8 +299,9 @@
     <div class="maplayout">
       <div class="card maparea">
         <div class="layerchips" id="layerchips"></div>
-        <svg class="map" id="mapsvg" viewBox="0 0 600 480" role="img" aria-label="Carte des communes"></svg>
+        <svg class="map" id="mapsvg" viewBox="0 0 600 480" role="img" aria-label="Carte du Grand Paris — arrondissements et couronnes"></svg>
         <div class="legend"><span class="lab" id="legMin"></span><span class="ramp" id="legRamp"></span><span class="lab" id="legMax"></span></div>
+        <div class="horsband" id="horsband"></div>
       </div>
       <div class="card detail" id="detail"></div>
     </div>
@@ -463,7 +489,8 @@ const regionBy=Object.fromEntries(REGIONS.map(r=>[r.code,r]));
 const avg=a=>a.reduce((s,x)=>s+x,0)/a.length;
 
 /* ---------- État ---------- */
-let state={ year:2024, layer:"note_ville", selected:C[0].code, profile:"home", region:"NAQ",
+let state={ year:2024, selected:"75104", profile:"home",
+  rings:{paris:true,petite:true,grande:true,hors:true},
   weights:{...DEFAULT_WEIGHTS.home}, cmp:[C[0].code,C[2].code,C[5].code] };
 
 /* ---------- Carte ---------- */
@@ -473,7 +500,19 @@ const NOTE_CATEGORIES=["Accessibilité & transport","Attractivité","Citoyennet�
 const QOL_SET=["Accessibilité & transport","Éducation","Santé","Sécurité","Coût de la vie","Culture","Nature","Qualité de vie"];
 function _fnv(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 function _cat(code,cat){return _fnv(code+"§"+cat)%101;}
-C.forEach(c=>c.kind="commune");
+C.forEach(c=>{c.kind="commune"; c.ring="hors";});
+// Profils synthétiques par couronne : min de base + amplitude, sur un hash déterministe.
+const RING_PROFILE={
+  paris:{ "Accessibilité & transport":[88,13],"Culture":[82,19],"Patrimoine":[62,38],
+    "Enseignement Supérieur":[58,42],"Innovation":[68,33],"Dynamisme":[80,21],
+    "Coût de la vie":[1,10],"Nature":[8,22],"Loisirs":[60,40],"Attractivité":[78,22] },
+  petite:{ "Accessibilité & transport":[74,22],"Culture":[52,30],"Patrimoine":[45,35],
+    "Enseignement Supérieur":[48,34],"Innovation":[55,30],"Dynamisme":[60,28],
+    "Coût de la vie":[14,20],"Nature":[28,24],"Loisirs":[50,32],"Attractivité":[55,28] },
+  grande:{ "Accessibilité & transport":[50,28],"Culture":[38,28],"Patrimoine":[40,38],
+    "Enseignement Supérieur":[35,30],"Innovation":[40,28],"Dynamisme":[42,28],
+    "Coût de la vie":[35,27],"Nature":[52,32],"Loisirs":[45,27],"Attractivité":[42,26] },
+};
 function notesOf(z){
   if(z._notes) return z._notes;
   const n={}; NOTE_CATEGORIES.forEach(c=>n[c]=_cat(z.code,c));
@@ -485,15 +524,9 @@ function notesOf(z){
     n["Économie & Travail"]=Math.round(s.revenu);
     n["Qualité de vie"]=Math.round((s.education+s.transports+s.revenu+s.prix)/4);
   } else {
-    n["Accessibilité & transport"]=88+_cat(z.code,"t")%13;
-    n["Culture"]=82+_cat(z.code,"c")%19;
-    n["Patrimoine"]=62+_cat(z.code,"p")%38;
-    n["Enseignement Supérieur"]=58+_cat(z.code,"es")%42;
-    n["Innovation"]=68+_cat(z.code,"in")%33;
-    n["Dynamisme"]=80+_cat(z.code,"dy")%21;
-    n["Coût de la vie"]=1+_cat(z.code,"cv")%10;
-    n["Nature"]=8+_cat(z.code,"na")%22;
-    n["Loisirs"]=60+_cat(z.code,"lo")%40;
+    const prof=RING_PROFILE[z.ring]||RING_PROFILE.paris;
+    for(const cat in prof){const[base,amp]=prof[cat]; n[cat]=base+_cat(z.code,cat)%(amp+1);}
+    n["Qualité de vie"]=Math.round((n["Nature"]+n["Coût de la vie"]+n["Culture"]+n["Accessibilité & transport"])/4);
   }
   z._notes=n; return n;
 }
@@ -507,7 +540,14 @@ function noteGridHTML(z){
   }).join("")+`</div>`;
 }
 
-// --- Arrondissements de Paris (Île-de-France) — géométrie stylisée (escargot).
+// --- Grand Paris : arrondissements + petite/grande couronne (géométrie stylisée).
+function mkZone(code,nom,lon,lat,kind,ring,d,dept){
+  return {code,nom,lon,lat,kind,ring,dept,
+    geometry:[[lon-d,lat-d],[lon+d,lat-d],[lon+d,lat+d],[lon-d,lat+d],[lon-d,lat-d]],
+    prix:PRIX_RING[ring]+_fnv(code)%PRIX_AMP[ring], population:8000+_fnv(code+"p")%140000};
+}
+const PRIX_RING={paris:9000,petite:5200,grande:3200,hors:2600}, PRIX_AMP={paris:5000,petite:3200,grande:2200,hors:1800};
+// Paris intra-muros (20 arrondissements)
 const ARR=[
  ["75101","Paris 1ᵉʳ",2.336,48.862],["75102","Paris 2ᵉ",2.342,48.868],["75103","Paris 3ᵉ",2.360,48.863],
  ["75104","Paris 4ᵉ",2.357,48.854],["75105","Paris 5ᵉ",2.344,48.844],["75106","Paris 6ᵉ",2.333,48.849],
@@ -516,97 +556,129 @@ const ARR=[
  ["75113","Paris 13ᵉ",2.362,48.828],["75114","Paris 14ᵉ",2.327,48.829],["75115","Paris 15ᵉ",2.293,48.840],
  ["75116","Paris 16ᵉ",2.262,48.858],["75117","Paris 17ᵉ",2.307,48.887],["75118","Paris 18ᵉ",2.348,48.892],
  ["75119","Paris 19ᵉ",2.382,48.887],["75120","Paris 20ᵉ",2.401,48.866],
-].map(([code,nom,lon,lat])=>{const d=0.010;
-  return {code,nom,kind:"arrondissement",lon,lat,
-    geometry:[[lon-d,lat-d],[lon+d,lat-d],[lon+d,lat+d],[lon-d,lat+d],[lon-d,lat-d]],
-    prix:9000+_fnv(code)%5000, population:15000+_fnv(code+"p")%180000};});
-const ALLZONES=C.concat(ARR);
+].map(([code,nom,lon,lat])=>mkZone(code,nom,lon,lat,"arrondissement","paris",0.009,"75"));
+// Petite couronne (92 · 93 · 94)
+const PC=[
+ ["92012","Boulogne-Billancourt",2.240,48.835,"92"],["92050","Nanterre",2.197,48.892,"92"],
+ ["92051","Neuilly-sur-Seine",2.269,48.884,"92"],["92040","Issy-les-Moulineaux",2.270,48.824,"92"],
+ ["92026","Courbevoie",2.256,48.897,"92"],["92002","Antony",2.301,48.754,"92"],
+ ["92004","Asnières-sur-Seine",2.285,48.911,"92"],
+ ["93066","Saint-Denis",2.358,48.936,"93"],["93048","Montreuil",2.441,48.862,"93"],
+ ["93001","Aubervilliers",2.383,48.916,"93"],["93005","Aulnay-sous-Bois",2.494,48.938,"93"],
+ ["93051","Noisy-le-Grand",2.553,48.848,"93"],["93008","Bobigny",2.439,48.906,"93"],
+ ["94028","Créteil",2.455,48.790,"94"],["94081","Vitry-sur-Seine",2.393,48.787,"94"],
+ ["94080","Vincennes",2.437,48.848,"94"],["94041","Ivry-sur-Seine",2.388,48.813,"94"],
+ ["94017","Champigny-sur-Marne",2.515,48.817,"94"],["94046","Maisons-Alfort",2.437,48.803,"94"],
+].map(([code,nom,lon,lat,dept])=>mkZone(code,nom,lon,lat,"couronne","petite",0.011,dept));
+// Grande couronne (77 · 78 · 91 · 95)
+const GC=[
+ ["78646","Versailles",2.130,48.804,"78"],["78551","Saint-Germain-en-Laye",2.094,48.899,"78"],
+ ["78361","Mantes-la-Jolie",1.717,48.990,"78"],["78498","Poissy",2.043,48.928,"78"],["78586","Sartrouville",2.163,48.937,"78"],
+ ["77288","Melun",2.657,48.540,"77"],["77284","Meaux",2.879,48.960,"77"],["77108","Chelles",2.593,48.883,"77"],["77186","Fontainebleau",2.700,48.404,"77"],
+ ["91228","Évry-Courcouronnes",2.429,48.629,"91"],["91377","Massy",2.283,48.726,"91"],["91174","Corbeil-Essonnes",2.482,48.614,"91"],["91477","Palaiseau",2.246,48.714,"91"],
+ ["95127","Cergy",2.078,49.036,"95"],["95018","Argenteuil",2.247,48.947,"95"],["95585","Sarcelles",2.378,48.995,"95"],["95500","Pontoise",2.101,49.050,"95"],
+].map(([code,nom,lon,lat,dept])=>mkZone(code,nom,lon,lat,"couronne","grande",0.013,dept));
+const IDF_ZONES=ARR.concat(PC,GC);          // affichées sur la carte (géographie réelle)
+const HORS=C;                               // hors couronnes = hors Île-de-France (données réelles Gironde)
+const ALLZONES=IDF_ZONES.concat(HORS);
 const byAny=Object.fromEntries(ALLZONES.map(z=>[z.code,z]));
-function zonesOf(region){return region==="IDF"?ARR:C;}
-function insetProjFor(region){return makeProj(bboxOf(zonesOf(region).flatMap(z=>z.geometry)), INSET.x+10, INSET.y+30, INSET.w-20, INSET.h-42, 4);}
+const RINGS=[
+  {code:"paris", label:"Paris (arr.)",     color:"#2b6cb0"},
+  {code:"petite",label:"Petite couronne",  color:"#2f9e7d"},
+  {code:"grande",label:"Grande couronne",  color:"#c98a1e"},
+  {code:"hors",  label:"Hors couronnes",   color:"#8a63c0"},
+];
+const ringBy=Object.fromEntries(RINGS.map(r=>[r.code,r]));
+// Projection Grand Paris (Île-de-France) — moitié gauche ; encart Paris à droite.
+const parisProj=makeProj(bboxOf(IDF_ZONES.flatMap(z=>z.geometry)), 14,40, VW-210, VH-80, 8);
+const PARIS_INSET={x:VW-186,y:66,w:172,h:214};
+const parisInsetProj=makeProj(bboxOf(ARR.flatMap(z=>z.geometry)),
+  PARIS_INSET.x+8, PARIS_INSET.y+26, PARIS_INSET.w-16, PARIS_INSET.h-34, 4);
 
-const SCORE_LAYERS=[{code:"note_ville",label:"Note de ville"},{code:"home_score",label:"Home Score"},{code:"investment_score",label:"Investment Score"}];
-function layerValue(c,layer,year){
-  if(layer==="note_ville") return noteVille100(c);
-  if(layer==="home_score"){const s=subscores(year);return scoreZone(s[c.code],DEFAULT_WEIGHTS.home).score;}
-  if(layer==="investment_score"){const s=subscores(year);return scoreZone(s[c.code],DEFAULT_WEIGHTS.investment).score;}
-  return indVal(c,layer,year);
-}
-function layerMeta(layer){
-  if(layer==="note_ville") return {label:"Note de ville",unit:"/100",dir:"higher_better",score:true};
-  if(layer==="home_score") return {label:"Home Score",unit:"/100",dir:"higher_better",score:true};
-  if(layer==="investment_score") return {label:"Investment Score",unit:"/100",dir:"higher_better",score:true};
-  const l=DATA.layers.find(x=>x.code===layer); return {label:l.label,unit:l.unit,dir:l.direction,score:false};
-}
+function noteColor(z){return lerpRamp(noteVille100(z)/100, RAMP_DIV);}
+// Chips = filtres par couronne (Paris / petite / grande / hors couronnes)
 function renderLayerChips(){
   const el=document.getElementById("layerchips"); el.innerHTML="";
-  const list=state.region==="IDF"
-    ? [{code:"note_ville",label:"Note de ville"}]
-    : [...SCORE_LAYERS,...DATA.layers.map(l=>({code:l.code,label:l.label,est:l.is_estimated}))];
-  list.forEach(l=>{
-    const b=document.createElement("button"); b.className="chip"; b.setAttribute("aria-pressed",l.code===state.layer);
-    b.innerHTML=l.label+(l.est?' <span class="e">est.</span>':"");
-    b.onclick=()=>{state.layer=l.code;renderLayerChips();renderMap();};
+  RINGS.forEach(r=>{
+    const on=state.rings[r.code];
+    const b=document.createElement("button"); b.className="chip ringchip"; b.setAttribute("aria-pressed",on);
+    b.innerHTML=`<span class="rdot" style="background:${r.color}"></span>${r.label}`;
+    b.onclick=()=>{state.rings[r.code]=!state.rings[r.code]; renderLayerChips(); renderMap(); renderHorsBand(); renderRightPanel();};
     el.appendChild(b);
   });
 }
-function colorFor(c,meta,min,max,ramp){
-  const v=layerValue(c,state.layer,2024);
-  let t=(v-min)/((max-min)||1); if(meta.dir==="lower_better"&&!meta.score) t=1-t;
-  return lerpRamp(t,ramp);
-}
 function renderMap(){
-  const meta=layerMeta(state.layer);
-  const vals=C.map(c=>layerValue(c,state.layer,2024));
-  const min=meta.score?0:Math.min(...vals), max=meta.score?100:Math.max(...vals);
-  const ramp=meta.score?RAMP_DIV:RAMP_SEQ;
-  const hasData=!!regionBy[state.region].data;
   const svg=document.getElementById("mapsvg"); svg.innerHTML="";
+  const title=svgEl("text",{x:14,y:24,class:"ftitle"});
+  title.textContent="Grand Paris — Paris intra-muros & couronnes (cliquez une zone)"; svg.appendChild(title);
 
-  // Fond France (masque les jointures des régions)
-  svg.appendChild(svgEl("path",{d:ringPath(FRANCE,franceProj),class:"france-base"}));
-  svg.appendChild(svgEl("path",{d:ringPath(CORSE,franceProj),class:"france-base"}));
-
-  // Régions interactives (survol → couleur ; clic → infos région)
-  REGIONS.forEach(r=>{
-    const cls="region"+(r.data?" has-data":" nodata")+(r.code===state.region?" sel":"");
-    const p=svgEl("path",{d:ringPath(r.poly,franceProj),class:cls,tabindex:"0",role:"button","aria-label":r.name});
-    const act=()=>{state.region=r.code;
-      if(r.data){state.selected=zonesOf(r.code)[0].code; if(r.code==="IDF") state.layer="note_ville";}
-      renderLayerChips(); renderMap(); renderRightPanel();};
-    p.onclick=act; p.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}};
-    const ttl=svgEl("title"); ttl.textContent=r.name+(r.data?" · données disponibles":" · hors périmètre démo"); p.appendChild(ttl);
-    svg.appendChild(p);
+  // Centre de Paris + cercles guides des couronnes
+  const ps0=ARR.map(z=>centroid(z.geometry,parisProj));
+  const cen=[avg(ps0.map(p=>p[0])),avg(ps0.map(p=>p[1]))];
+  const ringRadius=zs=>{const ds=zs.map(z=>{const p=centroid(z.geometry,parisProj);
+    return Math.hypot(p[0]-cen[0],p[1]-cen[1]);}).sort((a,b)=>a-b); return ds[Math.floor(ds.length/2)];};
+  [["petite",PC],["grande",GC]].forEach(([ring,zs])=>{
+    if(!state.rings[ring])return; const r=ringRadius(zs), col=ringBy[ring].color;
+    svg.appendChild(svgEl("circle",{cx:cen[0],cy:cen[1],r:r,class:"crown",stroke:col}));
+    const lt=svgEl("text",{x:cen[0],y:cen[1]-r-4,"text-anchor":"middle",class:"crownlab",fill:col});
+    lt.textContent=ringBy[ring].label; svg.appendChild(lt);
   });
-  const ftitle=svgEl("text",{x:14,y:24,class:"ftitle"}); ftitle.textContent="France métropolitaine — cliquez une région";
-  svg.appendChild(ftitle);
 
-  // Région à données sélectionnée → repère + encart zones (communes ou arrondissements)
-  if(hasData){
-    const zones=zonesOf(state.region), ip=insetProjFor(state.region);
-    const gx=avg(zones.map(z=>centroid(z.geometry,franceProj)[0]));
-    const gy=avg(zones.map(z=>centroid(z.geometry,franceProj)[1]));
-    svg.appendChild(svgEl("circle",{cx:gx,cy:gy,r:10,class:"locus"}));
-    svg.appendChild(svgEl("line",{x1:gx+9,y1:gy,x2:INSET.x,y2:INSET.y+14,class:"leader"}));
-    svg.appendChild(svgEl("rect",{x:INSET.x,y:INSET.y,width:INSET.w,height:INSET.h,rx:8,class:"inset"}));
-    const it=svgEl("text",{x:INSET.x+10,y:INSET.y+18,class:"ftitle"});
-    it.textContent=state.region==="IDF"?"Paris — arrondissements":"Gironde — détail"; svg.appendChild(it);
-    zones.forEach(z=>{const p=svgEl("path",{d:ringPath(z.geometry,ip),fill:colorFor(z,meta,min,max,ramp)});
-      p.setAttribute("class","cell"+(z.code===state.selected?" sel":""));
+  // Zones de couronne (grande sous petite) ; Paris intra-muros → encart dédié à droite.
+  [["grande",GC],["petite",PC]].forEach(([ring,zs])=>{
+    if(!state.rings[ring])return; const col=ringBy[ring].color;
+    zs.forEach(z=>{const selc=z.code===state.selected;
+      const p=svgEl("path",{d:ringPath(z.geometry,parisProj),fill:noteColor(z),
+        style:`stroke:${selc?"var(--ink)":col};stroke-width:${selc?2.6:1.4}`});
+      p.setAttribute("class","cell"+(selc?" sel":""));
       p.onclick=()=>{state.selected=z.code;renderMap();renderRightPanel();};
-      const tt=svgEl("title"); tt.textContent=z.nom; p.appendChild(tt);
+      const tt=svgEl("title"); tt.textContent=`${z.nom} · note ${(noteVille100(z)/10).toFixed(1)}/10`; p.appendChild(tt);
       svg.appendChild(p);});
-    zones.forEach(z=>{const ct=centroid(z.geometry,ip);
-      const lab=z.kind==="arrondissement"?String(+z.code.slice(3)):z.nom;
-      const t=svgEl("text",{x:ct[0],y:ct[1],"text-anchor":"middle",class:"clab"});t.textContent=lab;svg.appendChild(t);});
+    zs.forEach(z=>{const ct=centroid(z.geometry,parisProj);
+      const t=svgEl("text",{x:ct[0],y:ct[1]+2,"text-anchor":"middle",class:"clab sm"});
+      t.textContent=z.nom.split(/[- ]/)[0]; svg.appendChild(t);});
+  });
+  // Repère « Paris » au centre (détail dans l'encart)
+  if(state.rings.paris){
+    svg.appendChild(svgEl("circle",{cx:cen[0],cy:cen[1],r:7,class:"locus",style:`fill:${ringBy.paris.color};fill-opacity:.85`}));
+    const pl=svgEl("text",{x:cen[0],y:cen[1]-11,"text-anchor":"middle",class:"clab"}); pl.textContent="Paris"; svg.appendChild(pl);
   }
 
-  const leg=document.querySelector(".legend"); leg.style.display=hasData?"flex":"none";
-  if(hasData){
-    document.getElementById("legMin").textContent=meta.score?"0":fmtV(min,meta.unit);
-    document.getElementById("legMax").textContent=meta.score?"100":fmtV(max,meta.unit);
-    document.getElementById("legRamp").style.background=`linear-gradient(90deg,${ramp.join(",")})`;
+  // Encart zoom : Paris intra-muros (20 arrondissements lisibles)
+  if(state.rings.paris){
+    const IB=PARIS_INSET;
+    svg.appendChild(svgEl("line",{x1:cen[0],y1:cen[1],x2:IB.x,y2:IB.y+IB.h/2,class:"leader"}));
+    svg.appendChild(svgEl("rect",{x:IB.x,y:IB.y,width:IB.w,height:IB.h,rx:8,class:"inset"}));
+    const it=svgEl("text",{x:IB.x+9,y:IB.y+17,class:"ftitle"}); it.textContent="Paris — 20 arrondissements"; svg.appendChild(it);
+    ARR.forEach(z=>{const selc=z.code===state.selected;
+      const p=svgEl("path",{d:ringPath(z.geometry,parisInsetProj),fill:noteColor(z),
+        style:`stroke:${selc?"var(--ink)":ringBy.paris.color};stroke-width:${selc?2.4:1.1}`});
+      p.setAttribute("class","cell"+(selc?" sel":""));
+      p.onclick=()=>{state.selected=z.code;renderMap();renderRightPanel();};
+      const tt=svgEl("title"); tt.textContent=`${z.nom} · note ${(noteVille100(z)/10).toFixed(1)}/10`; p.appendChild(tt);
+      svg.appendChild(p);});
+    ARR.forEach(z=>{const ct=centroid(z.geometry,parisInsetProj);
+      const t=svgEl("text",{x:ct[0],y:ct[1]+2,"text-anchor":"middle",class:"clab"});
+      t.textContent=String(+z.code.slice(3)); svg.appendChild(t);});
   }
+
+  const leg=document.querySelector(".legend"); leg.style.display="flex";
+  document.getElementById("legMin").textContent="note 0";
+  document.getElementById("legMax").textContent="100";
+  document.getElementById("legRamp").style.background=`linear-gradient(90deg,${RAMP_DIV.join(",")})`;
+}
+// Bande « hors couronnes » : villes hors Île-de-France (données réelles), non géolocalisées ici.
+function renderHorsBand(){
+  const el=document.getElementById("horsband"); if(!el)return;
+  if(!state.rings.hors){el.style.display="none"; return;}
+  el.style.display="block";
+  el.innerHTML=`<div class="hb-t"><span class="rdot" style="background:${ringBy.hors.color}"></span>
+      Villes hors couronnes <small>(hors Île-de-France · données réelles)</small></div>
+    <div class="hb-row">`+HORS.map(z=>{
+      const nv=(noteVille100(z)/10).toFixed(1), sel=z.code===state.selected?" sel":"";
+      return `<button class="htile${sel}" data-code="${z.code}"><b>${z.nom}</b><span>${nv}<small>/10</small></span></button>`;
+    }).join("")+`</div>`;
+  el.querySelectorAll(".htile").forEach(b=>b.onclick=()=>{state.selected=b.dataset.code;renderMap();renderHorsBand();renderRightPanel();});
 }
 function fmtV(v,unit){return (Math.round(v*10)/10).toLocaleString("fr-FR")+(unit?(" "+unit):"");}
 
@@ -619,11 +691,13 @@ function naqAggregate(){
     best:best.c.nom, bestScore:best.s, n:C.length,
   };
 }
-function idfAggregate(){
-  const best=ARR.map(z=>({z,n:noteVille100(z)})).sort((a,b)=>b.n-a.n)[0];
-  return {prix:avg(ARR.map(z=>z.prix)), pop:ARR.reduce((a,z)=>a+z.population,0),
-    note:avg(ARR.map(z=>noteVille100(z)))/10, best:best.z.nom,
-    bestNote:Math.round(best.n/10*10)/10, n:ARR.length};
+function ringSummary(){
+  return RINGS.map(r=>{
+    const zs=ALLZONES.filter(z=>z.ring===r.code); if(!zs.length)return null;
+    const best=zs.map(z=>({z,n:noteVille100(z)})).sort((a,b)=>b.n-a.n)[0];
+    return {ring:r, n:zs.length, note:avg(zs.map(z=>noteVille100(z)))/10,
+      best:best.z.nom, bestNote:Math.round(best.n/10*10)/10};
+  }).filter(Boolean);
 }
 function noteHeaderHTML(z){
   const nv10=Math.round(noteVille100(z)/10*10)/10, g=grade(nv10);
@@ -639,9 +713,12 @@ function noteHeaderHTML(z){
     </div>`;
 }
 function zoneFicheHTML(z){
-  if(z.kind==="arrondissement"){
+  if(z.kind!=="commune"){
+    const tag=z.ring==="paris"?"Paris intra-muros"
+      :z.ring==="petite"?`Petite couronne · ${z.dept}`
+      :`Grande couronne · ${z.dept}`;
     return `<h3 style="font-size:1.05rem;margin-top:2px">${z.nom}
-        <span class="conf ok" style="vertical-align:middle">Paris intra-muros</span></h3>
+        <span class="conf ok" style="vertical-align:middle">${tag}</span></h3>
       <div class="regagg" style="margin-bottom:10px">
         <div><span class="k">Prix indicatif</span><b>${fmtV(z.prix,"€/m²")} <em class="est">est.</em></b></div>
         <div><span class="k">Population</span><b>${eur(z.population)}</b></div>
@@ -671,42 +748,19 @@ function zoneFicheHTML(z){
     <table class="ind"><tbody>${rows}</tbody></table>`;
 }
 function renderRightPanel(){
-  const reg=regionBy[state.region], el=document.getElementById("detail"), chips=document.getElementById("layerchips");
-  if(!reg.data){
-    chips.style.display="none";
-    el.innerHTML=`<p class="hint">Région sélectionnée</p><h2>${reg.name}</h2>
-      <div class="notice-box"><b>Hors périmètre de cette démonstration.</b><br>
-      Elle couvre un <b>échantillon de la Gironde</b> (Nouvelle-Aquitaine). ${reg.name} n'y est pas incluse.<br><br>
-      La plateforme réelle couvre <b>toute la France</b> via des sources publiques actualisées (DVF, INSEE, loyers, éducation, transports…).</div>
-      <p class="hint">👉 Cliquez la <b>Nouvelle-Aquitaine</b> (région surlignée) pour explorer des données réelles.</p>`;
-    return;
-  }
+  const el=document.getElementById("detail"), chips=document.getElementById("layerchips");
   chips.style.display="flex";
-  let aggHTML, footHint;
-  if(state.region==="IDF"){
-    const a=idfAggregate();
-    aggHTML=`<div class="regagg">
-      <div><span class="k">Note de ville moyenne</span><b>${a.note.toFixed(1)}<small>/10</small></b></div>
-      <div><span class="k">Prix moyen</span><b>${fmtV(a.prix,"€/m²")} <em class="est">est.</em></b></div>
-      <div><span class="k">Population</span><b>${eur(a.pop)}</b></div>
-      <div><span class="k">Meilleure note</span><b>${a.best} · ${a.bestNote}/10</b></div>
-    </div>
-    <p class="hint" style="margin-top:8px">${a.n} arrondissements · cliquez-en un dans l'encart « Paris — arrondissements ».</p>`;
-  } else {
-    const a=naqAggregate();
-    aggHTML=`<div class="regagg">
-      <div><span class="k">Prix moyen</span><b>${fmtV(a.prix,"€/m²")}</b></div>
-      <div><span class="k">Loyer moyen</span><b>${fmtV(a.loyer,"€/m²")} <em class="est">est.</em></b></div>
-      <div><span class="k">Rendement moyen</span><b>${fmtV(a.rend,"%")}</b></div>
-      <div><span class="k">Meilleur Home Score</span><b>${a.best} · ${a.bestScore}</b></div>
-    </div>
-    <p class="hint" style="margin-top:8px">Échantillon : ${a.n} communes · confiance moyenne ${Math.round(a.conf)}% · cliquez une commune dans l'encart.</p>`;
-  }
-  el.innerHTML=`<p class="hint">Région · <span style="color:var(--good)">${state.region==="IDF"?"arrondissements disponibles":"échantillon disponible"}</span></p>
-    <h2>${reg.name}</h2>
-    ${aggHTML}
+  const sum=ringSummary();
+  const rows=sum.map(s=>`<div class="rsum"><span class="rdot" style="background:${s.ring.color}"></span>
+      <span class="rsl">${s.ring.label}</span><span class="rsn">${s.n}</span>
+      <b>${s.note.toFixed(1)}<small>/10</small></b></div>`).join("");
+  el.innerHTML=`<p class="hint">Zone d'étude · <span style="color:var(--good)">Île-de-France & alentours</span></p>
+    <h2>Grand Paris</h2>
+    <div class="ringsum">${rows}</div>
+    <p class="hint" style="margin-top:8px">Note de ville moyenne par couronne · cliquez une zone sur la carte
+      (ou une ville hors couronnes) pour son détail.</p>
     <hr class="sep">
-    ${zoneFicheHTML(byAny[state.selected])}`;
+    ${zoneFicheHTML(byAny[state.selected]||ARR[0])}`;
 }
 function sparkSVG(hist){const w=120,h=32,p=3,vs=hist.map(x=>x.value),mn=Math.min(...vs),mx=Math.max(...vs);
   const pts=hist.map((x,i)=>`${p+i*(w-2*p)/(hist.length-1)},${h-p-((x.value-mn)/((mx-mn)||1))*(h-2*p)}`).join(" ");
@@ -842,7 +896,7 @@ document.getElementById("themeBtn").onclick=()=>{
 try{const s=localStorage.getItem("demo-theme"); if(s) root.setAttribute("data-theme",s);}catch(e){}
 
 /* ---------- Init ---------- */
-renderLayerChips(); renderMap(); renderRightPanel();
+renderLayerChips(); renderMap(); renderHorsBand(); renderRightPanel();
 renderSliders(); renderRank();
 renderCmpChips(); renderCmp();
 renderAlerts();
