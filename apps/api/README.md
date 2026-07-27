@@ -30,6 +30,7 @@ uvicorn app.main:app --reload --port 8000
 | POST | `/api/compare` | **Comparateur** : 2–4 zones + badges automatiques |
 | POST | `/api/projects` | **Sauvegarder** un projet (fige un snapshot du classement) |
 | GET | `/api/projects/{id}` | **Recharger** un projet : critères + classement courant + delta |
+| GET | `/api/projects/{id}/alerts` | **Alertes** expliquées (évolution vs snapshot : prix, score, rang, budget) |
 | PUT | `/api/projects/{id}` | Mettre à jour un projet (nouvelle référence) |
 | GET | `/api/admin/sources` | **Back-office** : supervision des sources (statut, DQ, fraîcheur) |
 | GET | `/api/admin/runs` | Détail du dernier run (lineage + DQ par indicateur) |

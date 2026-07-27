@@ -1,0 +1,13 @@
+id_mutation,date_mutation,nature_mutation,valeur_fonciere,code_postal,code_commune,nom_commune,code_departement,type_local,surface_reelle_bati,nombre_pieces_principales
+2025-001,2025-02-11,Vente,298200,33000,33063,Bordeaux,33,Appartement,60,3
+2025-002,2025-04-20,Vente,497000,33000,33063,Bordeaux,33,Maison,100,5
+2025-010,2025-03-14,Vente,202250,33130,33069,Bègles,33,Appartement,50,2
+2025-011,2025-05-22,Vente,323600,33130,33069,Bègles,33,Maison,80,4
+2025-020,2025-02-27,Vente,220000,33170,33192,Gradignan,33,Appartement,50,2
+2025-021,2025-05-09,Vente,396000,33170,33192,Gradignan,33,Maison,90,4
+2025-030,2025-01-23,Vente,231000,33700,33281,Mérignac,33,Appartement,60,3
+2025-031,2025-06-12,Vente,346500,33700,33281,Mérignac,33,Maison,90,4
+2025-040,2025-03-05,Vente,237000,33600,33318,Pessac,33,Appartement,60,3
+2025-041,2025-07-19,Vente,355500,33600,33318,Pessac,33,Maison,90,4
+2025-050,2025-02-18,Vente,255600,33400,33449,Talence,33,Appartement,60,3
+2025-051,2025-05-28,Vente,383400,33400,33449,Talence,33,Maison,90,4

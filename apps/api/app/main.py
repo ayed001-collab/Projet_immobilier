@@ -252,6 +252,15 @@ def read_project(pid: str) -> dict:
     return proj
 
 
+@app.get("/api/projects/{pid}/alerts")
+def project_alerts(pid: str) -> dict:
+    """Alertes expliquées du projet (évolution vs snapshot) — RG-A."""
+    res = _guard(lambda: projects.alerts(pid))
+    if res is None:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+    return res
+
+
 @app.put("/api/projects/{pid}")
 def update_project(pid: str, payload: ProjectPayload) -> dict:
     """Met à jour un projet (nouvelle sauvegarde = nouvelle référence de snapshot)."""

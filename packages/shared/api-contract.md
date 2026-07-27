@@ -78,6 +78,10 @@ et `badges` = `{ meilleur_profil, meilleur_rapport_qualite_prix, meilleur_potent
 - `GET /api/projects/{id}` → `Project` = `{ id, created_at, updated_at, payload, snapshot, snapshot_at, millesime_ref, current_millesime, results }`.
   `results` = `RankedZone[]` enrichis de `score_delta` / `rank_delta` (évolution vs snapshot).
 - `PUT /api/projects/{id}` — met à jour le projet et **rebase** le snapshot.
+- `GET /api/projects/{id}/alerts` → `{ id, snapshot_at, snapshot_millesime, current_millesime, count, events: AlertEvent[] }`
+  où `AlertEvent` = `{ type: "prix"|"score"|"rang"|"budget", zone_id, nom_commune, severity, message, score_delta? }`.
+  Compare le snapshot du projet au classement courant ; les alertes ne se déclenchent
+  que lorsque les données publiées évoluent (RG-A, anti-bruit).
 
 ## Back-office data (Épic 9)
 - `GET /api/admin/sources` → `{ global_dq_score, run_finished, scoring_version, sources: AdminSource[] }`

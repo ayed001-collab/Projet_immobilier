@@ -6,6 +6,8 @@
 
 Deux parcours : 🏠 **Résidence principale** · 📈 **Investissement locatif**.
 
+> 🗺️ **Démo interactive autonome** : [`demos/`](demos/) — carte, scoring personnalisé, comparateur et alertes, sur données réelles du pipeline (échantillon Gironde), sans backend ni installation.
+
 Ce dépôt contient d'abord la **conception produit, data et technique** (ce document et le dossier [`docs/`](docs/)). Le code applicatif viendra ensuite, en suivant la roadmap et le plan de développement définis ici.
 
 ---
@@ -236,6 +238,28 @@ Septième incrément : la **supervision des données** — dernier « Must » du
 
 **Vérifié** : back-office end-to-end capturé (6 sources, DQ global 90,1, 2 sources
 signalées) · smoke API (`/api/admin/*`) · `next build` + typecheck · intégration API↔web.
+
+## Incrément 7 — Alertes (suivi dans le temps)
+
+Huitième incrément : les **alertes** qui bouclent la promesse du produit — un
+projet sauvegardé prévient l'utilisateur quand le marché bouge, **en expliquant
+pourquoi**.
+
+- **API** : `GET /api/projects/{id}/alerts` — compare le **snapshot** du projet
+  (incrément 5) au classement courant et génère des évènements **expliqués** :
+  évolution de prix, de score (avec le facteur déclencheur), de rang, entrée/sortie
+  du budget. Seuils anti-bruit (RG-A3) ; snapshot enrichi (prix par zone).
+- **Front** (`/projet`) : panneau **🔔 Alertes** au rechargement d'un projet, et les
+  puces de delta (▲/▼) sur chaque zone.
+- **Boucle complète démontrée** : sauvegarde d'un projet sur les données 2024 →
+  publication d'un millésime **DVF 2025** par la Data Factory (prix non uniformes,
+  Gradignan +18,9 %) → rechargement du cache (`/api/admin/reload`, incrément 6) →
+  alertes : *« Gradignan sort de votre budget »*, *« score −20 (71→51), porté par
+  l'évolution du prix +18,9 % »*, *« recule #1 → #6 »*, pendant que les autres
+  zones progressent.
+
+**Vérifié** : scénario 2024→2025 end-to-end capturé (10 évolutions expliquées) ·
+smoke API (alertes + 404) · `next build` + typecheck · intégration API↔web.
 
 ## Avertissement
 
