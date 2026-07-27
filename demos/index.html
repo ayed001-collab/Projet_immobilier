@@ -6,7 +6,8 @@
     --good:#1a7f4b; --warn:#b7791f; --bad:#c0392b;
     --est:#a15c00;
     --chip:#eef3f7;
-    --mapbg:#fbf3d5; --mapdept:#9a8a5f; --seine:#7fb2e6; --cellstroke:#ffffff;
+    --mapbg:#e9edf1; --mapdept:#8a96a5; --seine:#8fb3c4; --seinecase:#eef2f6; --cellstroke:#f4f7fa;
+    --map1:#cfe0f4; --map2:#9cc0e8; --map3:#5f97d6; --map4:#356fb5; --map5:#1a4a85;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
     --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --shadow:0 1px 3px rgba(15,39,64,.08),0 6px 20px rgba(15,39,64,.10);
@@ -19,20 +20,23 @@
       --accent:#4aa6d8; --accent-ink:#7cc2e8;
       --good:#4cc17e; --warn:#e0a53a; --bad:#e86a5c; --est:#d69a4a;
       --chip:#1a2b3b; --shadow:0 1px 3px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
-      --mapbg:#0f1a24; --mapdept:#5b6b7b; --seine:#3a6a9a; --cellstroke:#0c1620;
+      --mapbg:#141b24; --mapdept:#5c6b7d; --seine:#5f93a8; --seinecase:#0e141c; --cellstroke:#0f1620;
+      --map1:#22537f; --map2:#2f74b8; --map3:#4f97dd; --map4:#7ab4ee; --map5:#a9cef6;
     }
   }
   :root[data-theme="light"]{
     --ink:#0f2740; --ink-soft:#33475b; --muted:#6a7c8c; --paper:#e9edf1; --card:#fff; --line:#d5dde4;
     --accent:#0d6b9e; --accent-ink:#0a5680; --good:#1a7f4b; --warn:#b7791f; --bad:#c0392b; --est:#a15c00;
     --chip:#eef3f7; --shadow:0 1px 3px rgba(15,39,64,.08),0 6px 20px rgba(15,39,64,.10);
-    --mapbg:#fbf3d5; --mapdept:#9a8a5f; --seine:#7fb2e6; --cellstroke:#ffffff;
+    --mapbg:#e9edf1; --mapdept:#8a96a5; --seine:#8fb3c4; --seinecase:#eef2f6; --cellstroke:#f4f7fa;
+    --map1:#cfe0f4; --map2:#9cc0e8; --map3:#5f97d6; --map4:#356fb5; --map5:#1a4a85;
   }
   :root[data-theme="dark"]{
     --ink:#e8eef4; --ink-soft:#b9c6d2; --muted:#8598a8; --paper:#0c1620; --card:#132231; --line:#243545;
     --accent:#4aa6d8; --accent-ink:#7cc2e8; --good:#4cc17e; --warn:#e0a53a; --bad:#e86a5c; --est:#d69a4a;
     --chip:#1a2b3b; --shadow:0 1px 3px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
-    --mapbg:#0f1a24; --mapdept:#5b6b7b; --seine:#3a6a9a; --cellstroke:#0c1620;
+    --mapbg:#141b24; --mapdept:#5c6b7d; --seine:#5f93a8; --seinecase:#0e141c; --cellstroke:#0f1620;
+    --map1:#22537f; --map2:#2f74b8; --map3:#4f97dd; --map4:#7ab4ee; --map5:#a9cef6;
   }
 
   *{box-sizing:border-box}
@@ -109,8 +113,8 @@
     text-transform:uppercase;opacity:.8;pointer-events:none}
   svg.map .ftitle{font-family:var(--mono);font-size:9px;fill:var(--muted);letter-spacing:.05em;
     text-transform:uppercase;pointer-events:none}
-  svg.map .deptlab{font-family:var(--sans);font-weight:800;font-size:13px;fill:var(--mapdept);
-    letter-spacing:.06em;opacity:.9;paint-order:stroke;stroke:var(--mapbg);stroke-width:2.6px;pointer-events:none}
+  svg.map .deptlab{font-family:var(--sans);font-weight:700;font-size:12px;fill:var(--mapdept);
+    letter-spacing:.11em;opacity:.85;paint-order:stroke;stroke:var(--mapbg);stroke-width:2.4px;pointer-events:none}
   svg.map .legbox{fill:var(--card);stroke:var(--line);stroke-width:1;opacity:.96}
   svg.map .legtitle{font-family:var(--sans);font-weight:700;font-size:11px;fill:var(--ink);pointer-events:none}
   svg.map .legsub{font-family:var(--sans);font-size:9px;fill:var(--muted);pointer-events:none}
@@ -632,8 +636,10 @@ function polyCentroid(pts){let a=0,cx=0,cy=0;
   a*=0.5; if(Math.abs(a)<1e-6)return [avg(pts.map(p=>p[0])),avg(pts.map(p=>p[1]))];
   return [cx/(6*a),cy/(6*a)];}
 function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p[0]*q[1]-q[0]*p[1];}return Math.abs(a)/2;}
-// --- Choroplèthe : classes par quantiles + rampe chaude (jaune bas → rouge haut) ---
-const WARM=["#fdeaa6","#fbc85f","#f59a44","#ea6a3a","#d4372c"];
+// --- Choroplèthe : classes par quantiles + rampe séquentielle bleue (sobre) ---
+// Couleurs pilotées par CSS (var(--map1..5)) → recolorées automatiquement selon le thème.
+const MAPCLASSES=5;
+const mapFill=i=>`var(--map${i+1})`;
 function classBreaks(vals,k){const s=vals.slice().sort((a,b)=>a-b),br=[];
   for(let i=1;i<k;i++)br.push(s[Math.floor(i*s.length/k)]);return br;}
 function classIndex(v,br){let i=0;while(i<br.length&&v>=br[i])i++;return i;}
@@ -666,22 +672,24 @@ function renderMap(){
     const sites=zones.map(z=>mapProj(z.lon,z.lat));
     const bound=expandPoly(convexHull(sites),26);
     const cells=voronoiCells(sites,bound);
-    const vals=zones.map(z=>noteVille100(z)), br=classBreaks(vals,5);
+    const vals=zones.map(z=>noteVille100(z)), br=classBreaks(vals,MAPCLASSES);
     // Contour du territoire (liseré discret)
     svg.appendChild(svgEl("path",{d:polyPath(bound),fill:"none",stroke:"var(--mapdept)","stroke-width":1.4,opacity:.5}));
     // Cellules (communes)
     zones.forEach((z,i)=>{const poly=cells[i]; if(!poly||poly.length<3)return;
       const selc=z.code===state.selected;
-      const p=svgEl("path",{d:polyPath(poly),fill:WARM[classIndex(noteVille100(z),br)],
+      const p=svgEl("path",{d:polyPath(poly),fill:mapFill(classIndex(noteVille100(z),br)),
         style:`stroke:${selc?"var(--ink)":"var(--cellstroke)"};stroke-width:${selc?2.4:.8}`});
       p.setAttribute("class","cell"+(selc?" sel":""));
       p.onclick=()=>{state.selected=z.code;renderMap();renderRightPanel();};
       const tt=svgEl("title"); tt.textContent=`${z.nom} · note ${(noteVille100(z)/10).toFixed(1)}/10`; p.appendChild(tt);
       svg.appendChild(p); z._cell=poly;});
-    // La Seine + Marne (au-dessus des communes)
-    [SEINE,MARNE].forEach(w=>svg.appendChild(svgEl("path",
-      {d:linePath(w.map(([lo,la])=>mapProj(lo,la))),fill:"none",stroke:"var(--seine)",
-       "stroke-width":3.4,"stroke-linejoin":"round","stroke-linecap":"round",opacity:.9})));
+    // La Seine + Marne (liseré clair + ruban, au-dessus des communes)
+    [SEINE,MARNE].forEach(w=>{const d=linePath(w.map(([lo,la])=>mapProj(lo,la)));
+      svg.appendChild(svgEl("path",{d,fill:"none",stroke:"var(--seinecase)","stroke-width":5.4,
+        "stroke-linejoin":"round","stroke-linecap":"round"}));
+      svg.appendChild(svgEl("path",{d,fill:"none",stroke:"var(--seine)","stroke-width":3,
+        "stroke-linejoin":"round","stroke-linecap":"round"}));});
     // Étiquettes de département (grandes, estompées)
     DEPTS.forEach(d=>{const on=d.zs.filter(z=>state.rings[z.ring]); if(!on.length)return;
       const c=[avg(on.map(z=>mapProj(z.lon,z.lat)[0])),avg(on.map(z=>mapProj(z.lon,z.lat)[1]))];
@@ -701,13 +709,13 @@ function renderMap(){
   }
 }
 function drawLegend(svg,br){
-  const x=14,y=VH-146,w=150,rh=22,n=WARM.length;
+  const x=14,y=VH-146,w=150,rh=22,n=MAPCLASSES;
   const g=svgEl("g",{}); svg.appendChild(g);
   g.appendChild(svgEl("rect",{x:x,y:y,width:w,height:36+n*rh,rx:8,class:"legbox"}));
   const t1=svgEl("text",{x:x+12,y:y+18,class:"legtitle"}); t1.textContent="Note de ville"; g.appendChild(t1);
   const t2=svgEl("text",{x:x+12,y:y+30,class:"legsub"}); t2.textContent="(sur 10)"; g.appendChild(t2);
   for(let i=n-1;i>=0;i--){const yy=y+40+(n-1-i)*rh;
-    g.appendChild(svgEl("rect",{x:x+12,y:yy,width:20,height:rh-5,fill:WARM[i],stroke:"var(--cellstroke)","stroke-width":.6}));
+    g.appendChild(svgEl("rect",{x:x+12,y:yy,width:20,height:rh-5,fill:mapFill(i),stroke:"var(--cellstroke)","stroke-width":.6}));
     const lab= i===0?`< ${(br[0]/10).toFixed(1)}`
       : i===n-1?`≥ ${(br[n-2]/10).toFixed(1)}`
       : `${(br[i-1]/10).toFixed(1)} – ${(br[i]/10).toFixed(1)}`;
