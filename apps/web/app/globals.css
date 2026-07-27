@@ -137,6 +137,28 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .delta { font-size: 0.72rem; font-weight: 700; padding: 0.05rem 0.35rem; border-radius: 999px; }
 .delta.up { color: #1b5e34; background: #d8f3dc; }
 .delta.down { color: #b30000; background: #fde2e1; }
+
+/* --- Back-office data --- */
+.admin { min-height: 100vh; }
+.admin .reload { border: 1px solid #cfe0f5; background: #fff; color: #08519c; padding: 0.45rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.82rem; white-space: nowrap; }
+.admin .reload:disabled { opacity: 0.6; cursor: not-allowed; }
+.admin-body { max-width: 1080px; margin: 1.4rem auto; padding: 0 1.25rem; }
+.admin-body h2 { font-size: 1.05rem; margin: 1.4rem 0 0.6rem; }
+.tablewrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.admin-table th, .admin-table td { padding: 0.5rem 0.7rem; text-align: left; border-bottom: 1px solid #eef1f4; white-space: nowrap; }
+.admin-table thead th { background: #0f2740; color: #fff; font-weight: 500; }
+.admin-table .src { font-weight: 600; }
+.admin-table .ind { color: #667; font-size: 0.74rem; }
+.admin-table .est { color: #a15c00; font-style: italic; font-size: 0.72rem; }
+.status { font-weight: 600; font-size: 0.76rem; padding: 0.15rem 0.5rem; border-radius: 999px; }
+.status.ok { background: #d8f3dc; color: #1b5e34; }
+.status.warning { background: #fff3cd; color: #7a5b00; }
+.status.unknown { background: #eee; color: #555; }
+.dqbar { position: relative; display: inline-block; width: 90px; height: 16px; background: #eef1f4; border-radius: 4px; overflow: hidden; }
+.dqfill { position: absolute; inset: 0 auto 0 0; }
+.dqval { position: absolute; inset: 0; text-align: center; font-size: 0.7rem; line-height: 16px; color: #12263a; }
+.admin-body .note { font-size: 0.74rem; color: #778; margin-top: 1.2rem; }
 .results-list .ctx { font-size: 0.8rem; color: #667; margin: 0.2rem 0 0.8rem; }
 .results-list ol { list-style: none; margin: 0; padding: 0; }
 .results-list li { padding: 0.7rem 0; border-top: 1px solid #eef1f4; }

@@ -37,7 +37,8 @@ export default async function Home() {
 
         <p className="explore">
           Ou <Link href="/carte">explorer la carte</Link> ·{" "}
-          <Link href="/comparer">comparer des zones</Link>.
+          <Link href="/comparer">comparer des zones</Link> ·{" "}
+          <Link href="/admin">back-office data</Link>.
         </p>
 
         {meta && (

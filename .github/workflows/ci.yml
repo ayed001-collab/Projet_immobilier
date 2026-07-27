@@ -96,6 +96,11 @@ jobs:
           assert got["id"] == proj["id"] and got["results"]
           assert all("score_delta" in r for r in got["results"])
           assert c.get("/api/projects/deadbeef0000").status_code == 404
+          # Back-office data.
+          adm = c.get("/api/admin/sources").json()
+          assert adm["sources"] and all("status" in s for s in adm["sources"])
+          assert c.get("/api/admin/runs").json()["dq_report"]
+          assert c.post("/api/admin/reload").json()["status"] == "reloaded"
           print("API smoke OK")
           PY
 

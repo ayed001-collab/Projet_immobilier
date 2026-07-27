@@ -260,3 +260,43 @@ def update_project(pid: str, payload: ProjectPayload) -> dict:
     if proj is None:
         raise HTTPException(status_code=404, detail="Projet introuvable.")
     return proj
+
+
+# --- Back-office data (Épic 9) --------------------------------------------
+
+@app.get("/api/admin/sources")
+def admin_sources() -> dict:
+    """Supervision des sources : statut, dernière donnée, DQ, prochaine collecte."""
+    sources = _guard(data.admin_sources)
+    man = _guard(data.manifest)
+    return {
+        "global_dq_score": man.get("dq_report", {}).get("global_dq_score"),
+        "run_finished": man.get("run_finished"),
+        "scoring_version": man.get("scoring_version"),
+        "sources": sources,
+    }
+
+
+@app.get("/api/admin/runs")
+def admin_runs() -> dict:
+    """Détail du dernier run (lineage + DQ par indicateur)."""
+    man = _guard(data.manifest)
+    return {
+        "run_started": man.get("run_started"),
+        "run_finished": man.get("run_finished"),
+        "departement": man.get("departement"),
+        "dvf_millesimes": man.get("dvf_millesimes"),
+        "outputs": man.get("outputs"),
+        "dq_report": man.get("dq_report"),
+    }
+
+
+@app.post("/api/admin/reload")
+def admin_reload() -> dict:
+    """Recharge les données de service publiées (après un run de la Data Factory).
+
+    Action réelle et sûre : vide le cache de lecture. Le déclenchement du pipeline
+    lui-même relève de l'orchestrateur (Dagster) — hors de l'API de lecture.
+    """
+    data.reload_cache()
+    return {"status": "reloaded", "meta": _guard(data.get_meta)}

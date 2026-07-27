@@ -219,6 +219,24 @@ son sens à l'actualisation des données : un même projet voit son classement �
 1 ligne en base) · smoke API (création + rechargement + delta + 404) · `next build`
 + typecheck · intégration API↔web.
 
+## Incrément 6 — Back-office data (Épic 9)
+
+Septième incrément : la **supervision des données** — dernier « Must » du MVP.
+
+- **Data Factory** : publie `admin_sources.json` — état par famille de source
+  (DVF, INSEE, Loyers, Rendement, Éducation, Transports) : indicateurs produits,
+  dernière donnée (millésime), dernière/prochaine collecte, fréquence, DQ, statut.
+- **API** : `GET /api/admin/sources` (supervision), `GET /api/admin/runs` (lineage +
+  DQ par indicateur), `POST /api/admin/reload` (recharge le cache après un run ;
+  le déclenchement du pipeline relève de l'orchestrateur).
+- **Front** (`/admin`) : tableau de bord — statut ✓/⚠ par source, DQ colorée,
+  fraîcheur, prochaine collecte, et qualité par indicateur (complétude, fraîcheur,
+  volume). Les sources « anciennes » (INSEE 2021, Transports) sont **signalées**,
+  jamais masquées.
+
+**Vérifié** : back-office end-to-end capturé (6 sources, DQ global 90,1, 2 sources
+signalées) · smoke API (`/api/admin/*`) · `next build` + typecheck · intégration API↔web.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.
