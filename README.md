@@ -6,7 +6,7 @@
 
 Deux parcours : 🏠 **Résidence principale** · 📈 **Investissement locatif**.
 
-> 🗺️ **Démo interactive autonome** : [`demos/`](demos/) — carte de France cliquable (**Île-de-France** → 20 arrondissements de Paris ; **Gironde** hors Île-de-France), **Note de ville** (20 thèmes cadre de vie), scoring personnalisé, comparateur et alertes, sur données réelles du pipeline, sans backend ni installation.
+> 🗺️ **Démo interactive autonome** : [`demos/`](demos/) — carte du **Grand Paris** (20 arrondissements de Paris, **petite &amp; grande couronne**, et **villes hors couronnes** hors Île-de-France), **Note de ville** (20 thèmes cadre de vie), scoring personnalisé, comparateur et alertes, sur données réelles du pipeline, sans backend ni installation.
 >
 > 📦 **Version 0.1 — livraison pour revue & démo** : [`docs/LIVRAISON-v0.1.md`](docs/LIVRAISON-v0.1.md) (périmètre, lancement, limites, prochaines étapes).
 >
