@@ -28,6 +28,12 @@ uvicorn app.main:app --reload --port 8000
 | POST | `/api/finance` | **Module financement** : capacité d'emprunt & budget d'achat |
 | POST | `/api/score` | **Classement personnalisé** + recherche inversée (budget) |
 | POST | `/api/compare` | **Comparateur** : 2–4 zones + badges automatiques |
+| POST | `/api/projects` | **Sauvegarder** un projet (fige un snapshot du classement) |
+| GET | `/api/projects/{id}` | **Recharger** un projet : critères + classement courant + delta |
+| PUT | `/api/projects/{id}` | Mettre à jour un projet (nouvelle référence) |
+
+Persistance : **SQLite** (`PROJECTS_DB`, défaut `apps/api/projects.db`), sans service
+externe ni authentification à ce stade — l'identifiant fait office de clé d'accès.
 
 `POST /api/finance` — corps : `{ "revenus_mensuels": 5200, "apport": 60000, "taux_annuel": 3.5, "duree_annees": 25 }`
 → mensualité max, capacité d'emprunt, frais, **budget d'achat**.

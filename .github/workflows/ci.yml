@@ -90,6 +90,12 @@ jobs:
           cmp = c.post("/api/compare", json={"codes": ["33063", "33192"], "profile": "home"}).json()
           assert len(cmp["zones"]) == 2 and cmp["badges"]["meilleur_profil"]
           assert c.post("/api/compare", json={"codes": ["33063"]}).status_code == 400
+          # Projet persistant : création + rechargement.
+          proj = c.post("/api/projects", json={"profile": "home", "surface": 70, "weights": {"prix": 30}}).json()
+          got = c.get(f"/api/projects/{proj['id']}").json()
+          assert got["id"] == proj["id"] and got["results"]
+          assert all("score_delta" in r for r in got["results"])
+          assert c.get("/api/projects/deadbeef0000").status_code == 404
           print("API smoke OK")
           PY
 

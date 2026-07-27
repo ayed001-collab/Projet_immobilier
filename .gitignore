@@ -28,3 +28,6 @@ data/factory/gold/*
 .DS_Store
 .idea/
 .vscode/
+
+# Base des projets persistants (SQLite, générée)
+apps/api/projects.db

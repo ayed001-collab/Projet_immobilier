@@ -108,6 +108,8 @@ export interface RankedZone {
   breakdown: ScoreContribution[];
   bien_type_price?: number | null;
   within_budget?: boolean | null;
+  score_delta?: number | null;
+  rank_delta?: number | null;
 }
 export interface ScoreResponse {
   profile: string;
@@ -151,6 +153,43 @@ export const fetchWeights = (profile: string) =>
   get<WeightsResponse>(`/api/weights?profile=${profile}`);
 export const postCompare = (body: { codes: string[]; profile: string }) =>
   post<CompareResponse>("/api/compare", body);
+
+// --- Projet persistant ----------------------------------------------------
+export interface ProjectPayload {
+  profile: string;
+  weights?: Record<string, number>;
+  budget?: number | null;
+  surface?: number | null;
+  finance?: Record<string, unknown> | null;
+  label?: string | null;
+}
+export interface Project {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  payload: ProjectPayload;
+  snapshot: { zone_id: string; nom_commune: string; rank: number; score: number }[];
+  snapshot_at: string;
+  millesime_ref: string | null;
+  current_millesime: string | null;
+  results: RankedZone[];
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${base}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
+  return res.json();
+}
+
+export const createProject = (p: ProjectPayload) => post<Project>("/api/projects", p);
+export const getProject = (id: string) => get<Project>(`/api/projects/${id}`);
+export const updateProject = (id: string, p: ProjectPayload) =>
+  put<Project>(`/api/projects/${id}`, p);
 export const postFinance = (input: FinanceInput) =>
   post<FinanceResult>("/api/finance", input);
 export const postScore = (body: {

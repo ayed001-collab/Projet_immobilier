@@ -130,6 +130,13 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .results-list { overflow-y: auto; padding: 1rem 1.1rem; border-right: 1px solid #e6eaee; }
 .results-head { display: flex; justify-content: space-between; align-items: center; }
 .results-head button { border: 1px solid #cbd3db; background: #fff; border-radius: 8px; padding: 0.3rem 0.7rem; cursor: pointer; }
+.rhead-actions { display: flex; gap: 0.4rem; }
+.rhead-actions .save { background: #08519c; color: #fff; border-color: #08519c; }
+.results-list .saved { font-size: 0.74rem; color: #1b5e34; background: #e3f4e8; padding: 0.4rem 0.6rem; border-radius: 8px; margin: 0.4rem 0; }
+.results-list .saved code { background: #cdeccf; padding: 0 0.25rem; border-radius: 4px; }
+.delta { font-size: 0.72rem; font-weight: 700; padding: 0.05rem 0.35rem; border-radius: 999px; }
+.delta.up { color: #1b5e34; background: #d8f3dc; }
+.delta.down { color: #b30000; background: #fde2e1; }
 .results-list .ctx { font-size: 0.8rem; color: #667; margin: 0.2rem 0 0.8rem; }
 .results-list ol { list-style: none; margin: 0; padding: 0; }
 .results-list li { padding: 0.7rem 0; border-top: 1px solid #eef1f4; }

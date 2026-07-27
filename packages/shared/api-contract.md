@@ -73,6 +73,12 @@ Réponse : `{ profile, scoring_version, zones: CompareZone[], badges, badge_labe
 et `badges` = `{ meilleur_profil, meilleur_rapport_qualite_prix, meilleur_potentiel, meilleure_qualite_vie, meilleur_rendement }`
 (chaque valeur = `code_commune` gagnant, ou `null`).
 
+## Projet persistant
+- `POST /api/projects` — corps : `ProjectPayload` = `{ profile, weights?, budget?, surface?, finance?, label? }` → `Project`.
+- `GET /api/projects/{id}` → `Project` = `{ id, created_at, updated_at, payload, snapshot, snapshot_at, millesime_ref, current_millesime, results }`.
+  `results` = `RankedZone[]` enrichis de `score_delta` / `rank_delta` (évolution vs snapshot).
+- `PUT /api/projects/{id}` — met à jour le projet et **rebase** le snapshot.
+
 ## `GET /api/communes/{code}`
 Renvoie les `properties` de la commune **+ `history`** :
 ```json

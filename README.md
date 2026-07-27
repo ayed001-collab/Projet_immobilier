@@ -197,6 +197,28 @@ automatiquement le meilleur choix par catégorie.
 smoke API (`/api/compare`, badges, validation 2–4 zones) · `next build` +
 typecheck · intégration API↔web.
 
+## Incrément 5 — Projet persistant (différenciateur)
+
+Sixième incrément : le **projet immobilier persistant** — sauvegarder son projet,
+le recharger via un lien, et **suivre l'évolution des scores dans le temps**.
+
+- **API** : `POST/GET/PUT /api/projects` — persistance **SQLite** (sans service
+  externe ni authentification lourde ; l'identifiant fait office de clé). À la
+  sauvegarde, un **snapshot** du classement est figé ; au rechargement, le
+  classement courant est recalculé et le **delta par zone** (`score_delta`,
+  `rank_delta`) est exposé — socle du suivi dans le temps et des futures alertes.
+- **Front** (`/projet`) : bouton **Sauvegarder**, lien partageable `?id=…`,
+  rechargement automatique du projet (critères + résultats + deltas). La logique de
+  classement est factorisée (`app/ranking.py`, réutilisée par `/api/score`).
+
+Combiné à l'historisation multi-millésimes (incrément 1), ce mécanisme donne tout
+son sens à l'actualisation des données : un même projet voit son classement évoluer
+à mesure que prix, loyers et indicateurs territoriaux changent.
+
+**Vérifié** : cycle sauvegarde → rechargement par URL capturé (projet restauré,
+1 ligne en base) · smoke API (création + rechargement + delta + 404) · `next build`
++ typecheck · intégration API↔web.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.
