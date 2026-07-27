@@ -6,6 +6,7 @@ import {
   fetchWeights, postFinance, postScore, createProject, getProject, updateProject,
   getProjectAlerts,
   type WeightsResponse, type FinanceResult, type ScoreResponse, type ProjectAlerts,
+  type RankedZone,
 } from "@/lib/api";
 import ResultsMap from "./ResultsMap";
 
@@ -240,6 +241,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
               <h2>Vos zones recommandées</h2>
               <div className="rhead-actions">
                 <button onClick={() => setStep(2)}>Ajuster</button>
+                <button onClick={() => window.print()}>🖨 Exporter PDF</button>
                 <button className="save" onClick={saveProject} disabled={saving}>
                   {saving ? "…" : savedId ? "Mettre à jour" : "💾 Sauvegarder"}
                 </button>
@@ -311,6 +313,80 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
           <ResultsMap results={results.results} />
         </section>
       )}
+
+      {step === 3 && results && (
+        <PrintReport
+          type={type}
+          results={results.results}
+          budget={finance?.budget_achat ?? null}
+          surface={surface}
+          savedId={savedId}
+        />
+      )}
     </main>
+  );
+}
+
+function PrintReport({
+  type, results, budget, surface, savedId,
+}: {
+  type: ProfileType;
+  results: RankedZone[];
+  budget: number | null;
+  surface: number;
+  savedId: string | null;
+}) {
+  const eur = (n: number) => Math.round(n).toLocaleString("fr-FR");
+  const today = new Date().toLocaleDateString("fr-FR");
+  const profil = type === "home" ? "Résidence principale" : "Investissement";
+  return (
+    <div className="print-report" aria-hidden="true">
+      <div className="pr-head">
+        <div>
+          <h1>Analyse immobilière — {profil}</h1>
+          <p className="pr-sub">
+            Budget d'achat ~ {budget ? eur(budget) : "—"} € · bien-type {surface} m² · éditée le {today}
+          </p>
+        </div>
+        <div className="pr-brand">Copilote de décision immobilière</div>
+      </div>
+
+      <table className="pr-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Commune</th><th>Score</th><th>Bien-type</th>
+            <th>Budget</th><th>Confiance</th><th>Facteurs clés</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={r.zone_id}>
+              <td>{r.rank}</td>
+              <td className="pr-nom">{r.nom_commune}</td>
+              <td className="pr-score">{r.score}/100</td>
+              <td>{r.bien_type_price != null ? `~ ${eur(r.bien_type_price)} €` : "—"}</td>
+              <td>{r.within_budget == null ? "—" : r.within_budget ? "✓ dans le budget" : "✗ au-dessus"}</td>
+              <td>{r.confidence_score != null ? `${r.confidence_score}%` : "—"}</td>
+              <td className="pr-why">
+                {[...r.breakdown].sort((a, b) => b.contribution - a.contribution).slice(0, 2).map((b) => b.label).join(", ")}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="pr-foot">
+        <p>
+          <b>Méthode.</b> Classement personnalisé selon vos critères pondérés. Scores 0–100,
+          normalisés et comparables entre zones ; chaque indicateur est sourcé et daté
+          (DVF, INSEE, loyers, éducation, transports). « Bien-type » = prix estimé pour la
+          surface cible. Les zones compatibles avec votre budget apparaissent en premier.
+        </p>
+        <p className="pr-disc">
+          Aide à la décision — jamais un conseil en investissement. Vous restez décisionnaire.
+          {savedId ? ` Projet suivi : réf. ${savedId}.` : ""} Généré par Copilote de décision immobilière.
+        </p>
+      </div>
+    </div>
   );
 }

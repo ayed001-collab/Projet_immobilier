@@ -261,6 +261,17 @@ pourquoi**.
 **Vérifié** : scénario 2024→2025 end-to-end capturé (10 évolutions expliquées) ·
 smoke API (alertes + 404) · `next build` + typecheck · intégration API↔web.
 
+## Incrément 8 — Export PDF d'une analyse
+
+Première brique V1 « Should » côté partage : depuis l'écran Résultats, un bouton
+**« Exporter PDF »** produit un rapport imprimable (via l'impression du navigateur →
+*Enregistrer en PDF*, sans dépendance) : en-tête du projet (budget, bien-type, date),
+tableau des zones classées (score, prix du bien-type, compatibilité budget, confiance,
+facteurs clés), méthode et mention **non-conseil**. Le chrome de l'application est
+masqué à l'impression via une feuille de style `@media print` dédiée.
+
+**Vérifié** : rapport rendu en média `print` + PDF généré, `next build` + typecheck.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.

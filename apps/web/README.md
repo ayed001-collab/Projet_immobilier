@@ -27,7 +27,7 @@ Build de production : `npm run build && npm run start`.
 | Route | Écran |
 |-------|-------|
 | `/` | Home — deux portes (résidence principale / investir) |
-| `/projet?type=home\|investment` | Onboarding progressif (budget + financement + critères pondérés) puis **résultats** (top personnalisé + carte) |
+| `/projet?type=home\|investment` | Onboarding progressif (budget + financement + critères pondérés) puis **résultats** (top personnalisé + carte + **export PDF**) |
 | `/comparer` | Comparateur — 2 à 4 zones côte à côte + badges automatiques |
 | `/carte` | Explorer — carte multi-couches + fiche (indicateurs, scores, confiance) |
 | `/admin` | Back-office data — supervision des sources, DQ, fraîcheur |
