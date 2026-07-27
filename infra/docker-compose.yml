@@ -1,0 +1,38 @@
+services:
+  # Base PostGIS (chemin production — l'API sait aussi lire le GeoJSON seul).
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: copilote
+      POSTGRES_PASSWORD: copilote
+      POSTGRES_DB: copilote
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgis/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ../apps/api
+    environment:
+      GOLD_DIR: /data/gold
+      CORS_ORIGINS: http://localhost:3000
+    volumes:
+      # Monte les sorties de la Data Factory (lancer d'abord data/factory/run.py).
+      - ../data/factory/gold:/data/gold:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  web:
+    build: ../apps/web
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

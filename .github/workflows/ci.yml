@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  scoring:
+    name: Scoring (package partagé)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/scoring
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e . pytest
+      - run: python -m pytest -q
+
+  data-factory:
+    name: Data Factory (pipeline + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: data/factory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Tests unitaires
+        run: python -m pytest -q
+      - name: Exécuter le pipeline de bout en bout (fixtures)
+        run: python run.py
+        env:
+          FACTORY_TODAY: "2026-07-26"
+      - name: Vérifier la sortie Gold
+        run: test -f gold/communes_indicators.geojson && test -f gold/history.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gold-output
+          path: data/factory/gold/
+
+  api:
+    name: API (import + smoke)
+    runs-on: ubuntu-latest
+    needs: data-factory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Régénérer les données de service
+        working-directory: data/factory
+        run: pip install -r requirements.txt && python run.py
+        env:
+          FACTORY_TODAY: "2026-07-26"
+      - name: Installer l'API
+        working-directory: apps/api
+        run: pip install -r requirements.txt httpx
+      - name: Smoke test des endpoints
+        working-directory: apps/api
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from app.main import app
+          c = TestClient(app)
+          assert c.get("/health").json()["status"] == "ok"
+          meta = c.get("/api/meta").json()
+          assert meta["communes_with_data"] >= 1 and len(meta["indicators"]) >= 5
+          assert len(c.get("/api/layers").json()) >= 5
+          assert len(c.get("/api/communes").json()["features"]) >= 1
+          b = c.get("/api/communes/33063").json()
+          assert b["indicators"]["prix_m2"]["value"] > 0
+          assert b["confidence_score"] is not None
+          assert b["home_score"] is not None and b["scores"]["home"]["breakdown"]
+          r = c.post("/api/score", json={"profile": "home"}).json()
+          assert r["results"] and r["results"][0]["rank"] == 1
+          # Recalcul dynamique : 100% transports change le classement.
+          r2 = c.post("/api/score", json={"profile": "home", "weights": {"transports": 1.0}}).json()
+          assert r2["results"][0]["zone_id"] != r["results"][0]["zone_id"]
+          fin = c.post("/api/finance", json={"revenus_mensuels": 5200, "apport": 60000}).json()
+          assert fin["budget_achat"] > 0 and fin["capacite_emprunt"] > 0
+          rs = c.post("/api/score", json={"profile": "home", "budget": 300000, "surface": 70}).json()
+          assert all("within_budget" in x for x in rs["results"])
+          print("API smoke OK")
+          PY
+
+  web:
+    name: Web (typecheck + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm run build

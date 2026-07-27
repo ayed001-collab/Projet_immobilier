@@ -1,0 +1,8 @@
+pandas>=2.1,<3
+pytest>=8,<9
+-e ../../packages/scoring
+# Optionnels (chemins production) :
+#   dagster>=1.7        # orchestration (factory/dagster_defs.py)
+#   great-expectations  # suites de Data Quality
+#   sqlalchemy>=2       # chargement PostGIS
+#   psycopg[binary]>=3  # driver Postgres
