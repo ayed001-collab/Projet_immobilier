@@ -6,6 +6,8 @@
 
 Deux parcours : 🏠 **Résidence principale** · 📈 **Investissement locatif**.
 
+> 🗺️ **Démo interactive autonome** : [`demos/`](demos/) — carte, scoring personnalisé, comparateur et alertes, sur données réelles du pipeline (échantillon Gironde), sans backend ni installation.
+
 Ce dépôt contient d'abord la **conception produit, data et technique** (ce document et le dossier [`docs/`](docs/)). Le code applicatif viendra ensuite, en suivant la roadmap et le plan de développement définis ici.
 
 ---
