@@ -129,8 +129,28 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+// --- Comparateur ----------------------------------------------------------
+export interface CompareZone {
+  code_commune: string;
+  nom_commune: string;
+  confidence_score: number | null;
+  home_score: number | null;
+  investment_score: number | null;
+  indicators: Record<string, IndicatorValue>;
+  subscores: Record<string, number>;
+}
+export interface CompareResponse {
+  profile: string;
+  scoring_version: string;
+  zones: CompareZone[];
+  badges: Record<string, string | null>;
+  badge_labels: Record<string, string>;
+}
+
 export const fetchWeights = (profile: string) =>
   get<WeightsResponse>(`/api/weights?profile=${profile}`);
+export const postCompare = (body: { codes: string[]; profile: string }) =>
+  post<CompareResponse>("/api/compare", body);
 export const postFinance = (input: FinanceInput) =>
   post<FinanceResult>("/api/finance", input);
 export const postScore = (body: {

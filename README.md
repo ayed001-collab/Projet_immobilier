@@ -178,6 +178,25 @@ extension budget de `POST /api/score` (prix du bien-type + compatibilité).
 et compatibles) · smoke API (`/api/finance`, recherche inversée) · `next build` +
 typecheck · intégration API↔web.
 
+## Incrément 4 — Comparateur (écran 5)
+
+Cinquième incrément : comparer **2 à 4 zones côte à côte** et faire ressortir
+automatiquement le meilleur choix par catégorie.
+
+- **API** : `POST /api/compare` → indicateurs + scores + confiance des zones
+  sélectionnées, avec **badges automatiques** : meilleur choix pour le profil,
+  meilleur rapport qualité/prix, meilleur potentiel, meilleure qualité de vie,
+  meilleur rendement.
+- **Front** (`/comparer`) : sélecteur de zones (2–4), tableau comparatif avec
+  **meilleure valeur par ligne surlignée** (sens de l'indicateur respecté : prix
+  et temps de trajet « plus bas = mieux »), bascule Résidence / Investir, badges
+  de synthèse. Les indicateurs de contexte (loyer, population) ne désignent pas
+  de « gagnant ».
+
+**Vérifié** : comparateur end-to-end capturé (Bordeaux / Talence / Gradignan) ·
+smoke API (`/api/compare`, badges, validation 2–4 zones) · `next build` +
+typecheck · intégration API↔web.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.

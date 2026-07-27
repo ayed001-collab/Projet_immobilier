@@ -66,6 +66,13 @@ Réponse : `{ profile, scoring_version, weights_applied, budget, surface, result
 - Avec `budget`+`surface` : **recherche inversée** — calcule le prix du bien-type par zone,
   marque la compatibilité budget, place les zones compatibles en tête (RG-R2).
 
+## `POST /api/compare`
+Corps : `{ "codes": ["33063", "33192"], "profile": "home" }` (2 à 4 codes).
+Réponse : `{ profile, scoring_version, zones: CompareZone[], badges, badge_labels }` où
+`CompareZone` = `{ code_commune, nom_commune, confidence_score, home_score, investment_score, indicators, subscores }`
+et `badges` = `{ meilleur_profil, meilleur_rapport_qualite_prix, meilleur_potentiel, meilleure_qualite_vie, meilleur_rendement }`
+(chaque valeur = `code_commune` gagnant, ou `null`).
+
 ## `GET /api/communes/{code}`
 Renvoie les `properties` de la commune **+ `history`** :
 ```json

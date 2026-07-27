@@ -154,3 +154,31 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .rpopup .ok { color: #1b7a3c; font-size: 0.8rem; } .rpopup .ko { color: #b30000; font-size: 0.8rem; }
 .rbreak { list-style: none; margin: 0.6rem 0 0; padding: 0; font-size: 0.76rem; }
 .rbreak li { display: flex; justify-content: space-between; padding: 0.15rem 0; border-top: 1px solid #f0f0f0; }
+
+/* --- Comparateur --- */
+.comparer { min-height: 100vh; }
+.profile-toggle { display: flex; gap: 0.3rem; }
+.profile-toggle button { border: none; background: #1d4e79; color: #cfe0f5; padding: 0.35rem 0.7rem; border-radius: 999px; cursor: pointer; font-size: 0.78rem; }
+.profile-toggle button.on { background: #fff; color: #0f2740; font-weight: 600; }
+.picker { max-width: 960px; margin: 1.2rem auto; padding: 0 1.25rem; }
+.picker p { font-size: 0.9rem; color: #445; }
+.picker .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 1rem; }
+.picker .chip { border: 1px solid #cbd3db; background: #fff; padding: 0.4rem 0.8rem; border-radius: 999px; cursor: pointer; font-size: 0.85rem; }
+.picker .chip.on { background: #08519c; color: #fff; border-color: #08519c; }
+.picker .chip:disabled { opacity: 0.4; cursor: not-allowed; }
+.picker .primary { background: #08519c; color: #fff; border: none; padding: 0.55rem 1.1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.picker .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.comparison { max-width: 960px; margin: 0 auto 2rem; padding: 0 1.25rem; overflow-x: auto; }
+.comparison table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.comparison th, .comparison td { padding: 0.5rem 0.7rem; text-align: center; border-bottom: 1px solid #eef1f4; }
+.comparison thead th { background: #0f2740; color: #fff; font-size: 0.9rem; }
+.comparison tbody th { text-align: left; color: #445; font-weight: 500; background: #f7f9fb; white-space: nowrap; }
+.comparison td.win { background: #e3f4e8; font-weight: 700; color: #1b5e34; }
+.comparison .scorerow td strong { font-size: 1.05rem; color: #08519c; }
+.comparison .scorerow td.win strong { color: #1b5e34; }
+.comparison .est { color: #a15c00; font-style: italic; font-size: 0.72rem; }
+.badges { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.2rem 0; }
+.cbadge { background: #eef6ff; border: 1px solid #cfe0f5; border-radius: 10px; padding: 0.55rem 0.8rem; display: flex; flex-direction: column; }
+.cbadge .btitle { font-size: 0.72rem; color: #567; }
+.cbadge strong { font-size: 1rem; color: #08519c; }
+.comparison .note { font-size: 0.72rem; color: #778; }

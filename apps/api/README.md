@@ -27,6 +27,7 @@ uvicorn app.main:app --reload --port 8000
 | GET | `/api/weights?profile=` | Pondérations par défaut d'un profil (home/investment) + libellés des critères |
 | POST | `/api/finance` | **Module financement** : capacité d'emprunt & budget d'achat |
 | POST | `/api/score` | **Classement personnalisé** + recherche inversée (budget) |
+| POST | `/api/compare` | **Comparateur** : 2–4 zones + badges automatiques |
 
 `POST /api/finance` — corps : `{ "revenus_mensuels": 5200, "apport": 60000, "taux_annuel": 3.5, "duree_annees": 25 }`
 → mensualité max, capacité d'emprunt, frais, **budget d'achat**.

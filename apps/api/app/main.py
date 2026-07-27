@@ -24,7 +24,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -160,4 +160,87 @@ def score(req: ScoreRequest) -> dict:
         "budget": req.budget,
         "surface": req.surface,
         "results": ranked,
+    }
+
+
+# --- Comparateur (écran 5) ------------------------------------------------
+
+class CompareRequest(BaseModel):
+    codes: list[str]  # 2 à 4 codes commune
+    profile: str = "home"
+
+
+# Badges automatiques : (clé, libellé, fonction de score à maximiser).
+def _qol(subs: dict) -> float:
+    parts = [subs[k] for k in ("education", "transports", "revenu") if k in subs]
+    return sum(parts) / len(parts) if parts else 0.0
+
+
+@app.post("/api/compare")
+def compare(req: CompareRequest) -> dict:
+    """Compare 2 à 4 zones et désigne le gagnant par catégorie (badges auto)."""
+    if not 2 <= len(req.codes) <= 4:
+        raise HTTPException(status_code=400, detail="Comparer entre 2 et 4 zones.")
+    if req.profile not in PROFILES:
+        raise HTTPException(status_code=400, detail=f"Profil inconnu : {req.profile}.")
+
+    props_by_zone = {
+        f["properties"]["code_commune"]: f["properties"]
+        for f in _guard(data.geojson)["features"]
+    }
+    all_scores = _guard(data.scores)
+
+    zones = []
+    for code in req.codes:
+        p = props_by_zone.get(str(code))
+        if p is None or not p.get("has_data"):
+            raise HTTPException(status_code=404, detail=f"Zone {code} indisponible.")
+        sc = all_scores.get(str(code), {})
+        zones.append({
+            "code_commune": str(code),
+            "nom_commune": p.get("nom_commune"),
+            "confidence_score": p.get("confidence_score"),
+            "home_score": p.get("home_score"),
+            "investment_score": p.get("investment_score"),
+            "indicators": p.get("indicators", {}),
+            "subscores": sc.get("subscores", {}),
+        })
+
+    def _val(z, ind):
+        return (z["indicators"].get(ind) or {}).get("value")
+
+    def _winner(fn):
+        best, best_v = None, None
+        for z in zones:
+            v = fn(z)
+            if v is None:
+                continue
+            if best_v is None or v > best_v:
+                best, best_v = z["code_commune"], v
+        return best
+
+    profile_key = f"{req.profile}_score"
+    badges = {
+        "meilleur_profil": _winner(lambda z: z.get(profile_key)),
+        "meilleur_rapport_qualite_prix": _winner(
+            lambda z: (z.get("home_score") / _val(z, "prix_m2"))
+            if z.get("home_score") and _val(z, "prix_m2") else None
+        ),
+        "meilleur_potentiel": _winner(lambda z: _val(z, "tendance_prix_1an")),
+        "meilleure_qualite_vie": _winner(lambda z: _qol(z["subscores"])),
+        "meilleur_rendement": _winner(lambda z: _val(z, "rendement_brut")),
+    }
+    badge_labels = {
+        "meilleur_profil": "Meilleur choix pour votre profil",
+        "meilleur_rapport_qualite_prix": "Meilleur rapport qualité/prix",
+        "meilleur_potentiel": "Meilleur potentiel",
+        "meilleure_qualite_vie": "Meilleure qualité de vie",
+        "meilleur_rendement": "Meilleur rendement",
+    }
+    return {
+        "profile": req.profile,
+        "scoring_version": SCORING_VERSION,
+        "zones": zones,
+        "badges": badges,
+        "badge_labels": badge_labels,
     }

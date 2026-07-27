@@ -87,6 +87,9 @@ jobs:
           assert fin["budget_achat"] > 0 and fin["capacite_emprunt"] > 0
           rs = c.post("/api/score", json={"profile": "home", "budget": 300000, "surface": 70}).json()
           assert all("within_budget" in x for x in rs["results"])
+          cmp = c.post("/api/compare", json={"codes": ["33063", "33192"], "profile": "home"}).json()
+          assert len(cmp["zones"]) == 2 and cmp["badges"]["meilleur_profil"]
+          assert c.post("/api/compare", json={"codes": ["33063"]}).status_code == 400
           print("API smoke OK")
           PY
 
