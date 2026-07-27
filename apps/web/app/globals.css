@@ -138,6 +138,41 @@ main { display: flex; flex-direction: column; height: 100vh; }
 .delta.up { color: #1b5e34; background: #d8f3dc; }
 .delta.down { color: #b30000; background: #fde2e1; }
 
+/* --- Simulateur d'investissement --- */
+.sim-controls { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; margin: 8px 0 14px; }
+@media (max-width: 560px) { .sim-controls { grid-template-columns: 1fr; } }
+.sim-controls select, .sim-controls input { padding: 8px; border: 1px solid #cbd3db; border-radius: 8px; background: #fff; color: #1a1a1a; font-size: .95rem; }
+.sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 640px) { .sim-grid { grid-template-columns: 1fr 1fr; } }
+.sim-grid > div { border: 1px solid #e6eaee; border-radius: 10px; padding: 10px 11px; display: flex; flex-direction: column; }
+.sim-grid .k { font-size: .72rem; color: #778; }
+.sim-grid b { font-size: 1.25rem; color: #08519c; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.sim-grid small { font-size: .68rem; color: #99a; }
+.sim-grid .cf.pos { background: #e3f4e8; border-color: #b6e0c2; }
+.sim-grid .cf.neg { background: #fde2e1; border-color: #f3c4c1; }
+.sim-grid .cf.pos b { color: #1b7a3c; }
+.sim-grid .cf.neg b { color: #b30000; }
+
+/* --- Rapport imprimable (Export PDF) --- */
+.print-report { display: none; }
+@media print {
+  .projet > .topbar, .projet > .results, .projet > .banner, .projet > .panel { display: none !important; }
+  .print-report { display: block !important; padding: 0; color: #111; font-size: 11pt; }
+  .pr-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f2740; padding-bottom: 8px; }
+  .pr-head h1 { font-size: 16pt; margin: 0; color: #0f2740; }
+  .pr-sub { margin: 3px 0 0; color: #555; font-size: 9pt; }
+  .pr-brand { font-size: 9pt; color: #08519c; font-weight: 700; text-align: right; max-width: 40%; }
+  .pr-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 9.5pt; }
+  .pr-table th, .pr-table td { border: 1px solid #ccc; padding: 5px 7px; text-align: left; vertical-align: top; }
+  .pr-table thead th { background: #0f2740; color: #fff; }
+  .pr-table .pr-nom { font-weight: 700; }
+  .pr-table .pr-score { font-weight: 700; color: #08519c; }
+  .pr-table .pr-why { color: #444; }
+  .pr-foot { margin-top: 14px; font-size: 8.5pt; color: #444; line-height: 1.4; }
+  .pr-disc { margin-top: 6px; color: #666; font-style: italic; }
+  @page { margin: 16mm; }
+}
+
 /* --- Alertes projet --- */
 .alerts { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 10px; padding: 0.6rem 0.7rem; margin: 0.4rem 0 0.8rem; }
 .alerts-head { font-weight: 600; font-size: 0.82rem; display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }

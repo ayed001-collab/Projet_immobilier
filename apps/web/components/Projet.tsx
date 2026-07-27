@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   fetchWeights, postFinance, postScore, createProject, getProject, updateProject,
-  getProjectAlerts,
+  getProjectAlerts, fetchCommunes, postSimulate,
   type WeightsResponse, type FinanceResult, type ScoreResponse, type ProjectAlerts,
+  type RankedZone, type SimResult, type CommuneProps,
 } from "@/lib/api";
 import ResultsMap from "./ResultsMap";
 
@@ -34,6 +35,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
   const [savedId, setSavedId] = useState<string | null>(initialId ?? null);
   const [saving, setSaving] = useState(false);
   const [alerts, setAlerts] = useState<ProjectAlerts | null>(null);
+  const [communeInd, setCommuneInd] = useState<Record<string, { nom: string; prix: number; loyer: number }>>({});
 
   useEffect(() => {
     fetchWeights(type)
@@ -78,6 +80,21 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
       .catch(() => setError("Projet introuvable."));
     getProjectAlerts(initialId).then(setAlerts).catch(() => {});
   }, [initialId]);
+
+  useEffect(() => {
+    fetchCommunes().then((fc) => {
+      const m: Record<string, { nom: string; prix: number; loyer: number }> = {};
+      fc.features.forEach((f) => {
+        const p = f.properties as CommuneProps;
+        if (p.has_data) m[p.code_commune] = {
+          nom: p.nom_commune,
+          prix: p.indicators.prix_m2?.value ?? 0,
+          loyer: p.indicators.loyer_m2?.value ?? 0,
+        };
+      });
+      setCommuneInd(m);
+    }).catch(() => {});
+  }, []);
 
   const computeFinance = useCallback(async () => {
     try {
@@ -240,6 +257,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
               <h2>Vos zones recommandées</h2>
               <div className="rhead-actions">
                 <button onClick={() => setStep(2)}>Ajuster</button>
+                <button onClick={() => window.print()}>🖨 Exporter PDF</button>
                 <button className="save" onClick={saveProject} disabled={saving}>
                   {saving ? "…" : savedId ? "Mettre à jour" : "💾 Sauvegarder"}
                 </button>
@@ -311,6 +329,150 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
           <ResultsMap results={results.results} />
         </section>
       )}
+
+      {step === 3 && results && type === "investment" && (
+        <InvestSim results={results.results} surface={surface} communeInd={communeInd} apport={apport} taux={taux} />
+      )}
+
+      {step === 3 && results && (
+        <PrintReport
+          type={type}
+          results={results.results}
+          budget={finance?.budget_achat ?? null}
+          surface={surface}
+          savedId={savedId}
+        />
+      )}
     </main>
+  );
+}
+
+function InvestSim({
+  results, surface, communeInd, apport, taux,
+}: {
+  results: RankedZone[];
+  surface: number;
+  communeInd: Record<string, { nom: string; prix: number; loyer: number }>;
+  apport: number;
+  taux: number;
+}) {
+  const [code, setCode] = useState(results[0]?.zone_id ?? "");
+  const [charges, setCharges] = useState(20);
+  const [vacancy, setVacancy] = useState(5);
+  const [sim, setSim] = useState<SimResult | null>(null);
+  const ind = communeInd[code];
+
+  const run = useCallback(async () => {
+    if (!ind || !ind.loyer) return;
+    try {
+      setSim(await postSimulate({
+        prix: Math.round(ind.prix * surface), surface, loyer_m2: ind.loyer,
+        apport, taux_annuel: taux, duree_annees: 20,
+        charges_pct: charges / 100, vacancy_pct: vacancy / 100,
+      }));
+    } catch { /* laisse l'état précédent */ }
+  }, [ind, surface, apport, taux, charges, vacancy]);
+
+  useEffect(() => { run(); }, [run]);
+  const eur = (n: number) => Math.round(n).toLocaleString("fr-FR");
+
+  return (
+    <section className="panel">
+      <div className="card ctl">
+        <h3 style={{ fontSize: "1rem", marginTop: 0 }}>Simulateur d'investissement <span className="hint" style={{ fontWeight: 400 }}>(indicatif)</span></h3>
+        <div className="sim-controls">
+          <label className="field">Commune
+            <select value={code} onChange={(e) => setCode(e.target.value)}>
+              {results.map((r) => <option key={r.zone_id} value={r.zone_id}>{communeInd[r.zone_id]?.nom ?? r.nom_commune}</option>)}
+            </select>
+          </label>
+          <label className="field">Charges (% loyer)<input type="number" value={charges} min={0} max={50} onChange={(e) => setCharges(+e.target.value)} /></label>
+          <label className="field">Vacance (%)<input type="number" value={vacancy} min={0} max={30} onChange={(e) => setVacancy(+e.target.value)} /></label>
+        </div>
+
+        {sim ? (
+          <>
+            <div className="sim-grid">
+              <div><span className="k">Coût total</span><b>{eur(sim.cout_total)} €</b><small>prix {eur(sim.prix)} + frais {eur(sim.frais)}</small></div>
+              <div><span className="k">Loyer</span><b>{eur(sim.loyer_mensuel)} €/mois</b><small>{eur(sim.loyer_annuel_brut)} €/an brut</small></div>
+              <div><span className="k">Rendement brut</span><b>{sim.rendement_brut}%</b></div>
+              <div><span className="k">Rendement net</span><b>{sim.rendement_net}%</b><small>charges + taxe foncière − vacance</small></div>
+              <div><span className="k">Mensualité crédit</span><b>{eur(sim.mensualite_credit)} €</b><small>emprunt {eur(sim.emprunt)} € · 20 ans</small></div>
+              <div className={sim.cashflow_mensuel >= 0 ? "cf pos" : "cf neg"}>
+                <span className="k">Cash-flow</span><b>{sim.cashflow_mensuel >= 0 ? "+" : ""}{eur(sim.cashflow_mensuel)} €/mois</b>
+                <small>{sim.cashflow_annuel >= 0 ? "+" : ""}{eur(sim.cashflow_annuel)} €/an</small>
+              </div>
+            </div>
+            <p className="note">Estimation indicative — hors fiscalité (LMNP, déficit foncier…). Loyer estimé (modèle). Vous restez décisionnaire.</p>
+          </>
+        ) : (
+          <p className="hint">{ind && !ind.loyer ? "Loyer indisponible pour cette commune." : "Chargement…"}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PrintReport({
+  type, results, budget, surface, savedId,
+}: {
+  type: ProfileType;
+  results: RankedZone[];
+  budget: number | null;
+  surface: number;
+  savedId: string | null;
+}) {
+  const eur = (n: number) => Math.round(n).toLocaleString("fr-FR");
+  const today = new Date().toLocaleDateString("fr-FR");
+  const profil = type === "home" ? "Résidence principale" : "Investissement";
+  return (
+    <div className="print-report" aria-hidden="true">
+      <div className="pr-head">
+        <div>
+          <h1>Analyse immobilière — {profil}</h1>
+          <p className="pr-sub">
+            Budget d'achat ~ {budget ? eur(budget) : "—"} € · bien-type {surface} m² · éditée le {today}
+          </p>
+        </div>
+        <div className="pr-brand">Copilote de décision immobilière</div>
+      </div>
+
+      <table className="pr-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Commune</th><th>Score</th><th>Bien-type</th>
+            <th>Budget</th><th>Confiance</th><th>Facteurs clés</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={r.zone_id}>
+              <td>{r.rank}</td>
+              <td className="pr-nom">{r.nom_commune}</td>
+              <td className="pr-score">{r.score}/100</td>
+              <td>{r.bien_type_price != null ? `~ ${eur(r.bien_type_price)} €` : "—"}</td>
+              <td>{r.within_budget == null ? "—" : r.within_budget ? "✓ dans le budget" : "✗ au-dessus"}</td>
+              <td>{r.confidence_score != null ? `${r.confidence_score}%` : "—"}</td>
+              <td className="pr-why">
+                {[...r.breakdown].sort((a, b) => b.contribution - a.contribution).slice(0, 2).map((b) => b.label).join(", ")}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="pr-foot">
+        <p>
+          <b>Méthode.</b> Classement personnalisé selon vos critères pondérés. Scores 0–100,
+          normalisés et comparables entre zones ; chaque indicateur est sourcé et daté
+          (DVF, INSEE, loyers, éducation, transports). « Bien-type » = prix estimé pour la
+          surface cible. Les zones compatibles avec votre budget apparaissent en premier.
+        </p>
+        <p className="pr-disc">
+          Aide à la décision — jamais un conseil en investissement. Vous restez décisionnaire.
+          {savedId ? ` Projet suivi : réf. ${savedId}.` : ""} Généré par Copilote de décision immobilière.
+        </p>
+      </div>
+    </div>
   );
 }
