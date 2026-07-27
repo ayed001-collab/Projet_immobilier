@@ -111,7 +111,8 @@
   .noteville{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 6%,transparent),transparent)}
   .nv-head{display:flex;align-items:center;gap:12px}
   .nv-grade{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-size:1.5rem;font-weight:800;color:#fff}
-  .nv-A{background:#1a7f4b}.nv-B{background:#5c9e3a}.nv-C{background:#c9a227}.nv-D{background:#c0392b}
+  .nv-A{background:#1a7f4b}.nv-B{background:#5c9e3a}.nv-C{background:#c9a227}.nv-D{background:#d35400}.nv-E{background:#c0392b}
+  .nv-hint{margin-left:auto;font-size:.68rem;color:var(--muted);max-width:120px;text-align:right}
   .nv-lab{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-family:var(--mono)}
   .nv-val{font-size:1.7rem;font-weight:800;color:var(--ink);line-height:1}
   .nv-val small{font-size:.8rem;color:var(--muted);font-weight:500}
@@ -120,7 +121,16 @@
   .nv-tb{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
   .nv-tb i{display:block;height:100%;background:var(--accent)}
   .nv-t b{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.76rem;color:var(--ink)}
-  .nv-src{font-size:.68rem;color:var(--muted);display:block}
+  .nv-src{font-size:.68rem;color:var(--muted);display:block;margin-top:8px}
+  .notegrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0 4px}
+  .ng{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);
+    border-radius:8px;padding:6px 9px;font-size:.76rem;background:var(--card)}
+  .ng .ngl{color:var(--ink-soft);line-height:1.15}
+  .ng .ngv{font-variant-numeric:tabular-nums;font-family:var(--mono);font-weight:700;color:var(--ink);white-space:nowrap}
+  .ng.hi{border-color:color-mix(in srgb,var(--good) 45%,var(--line));background:color-mix(in srgb,var(--good) 9%,var(--card))}
+  .ng.hi .ngv{color:var(--good)}
+  .ng.lo{border-color:color-mix(in srgb,var(--bad) 40%,var(--line));background:color-mix(in srgb,var(--bad) 8%,var(--card))}
+  .ng.lo .ngv{color:var(--bad)}
   .scorepair{display:flex;gap:10px;margin:12px 0}
   .scorebox{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px}
   .scorebox .k{font-size:.72rem;color:var(--muted)}
@@ -439,7 +449,7 @@ const REGIONS=[
  {code:"NOR",name:"Normandie",poly:[[-1.9,49.72],[-1.25,49.4],[-0.25,49.3],[0.15,49.5],[1.6,50.05],[1.6,49.3],[0.4,48.7],[-1.0,48.6],[-1.6,49.35],[-1.9,49.72]]},
  {code:"BRE",name:"Bretagne",poly:[[-1.0,48.6],[-1.85,48.65],[-2.7,48.6],[-3.5,48.83],[-4.6,48.68],[-4.8,48.35],[-4.35,47.8],[-2.55,47.5],[-2.15,47.9],[-1.5,48.1],[-1.0,48.6]]},
  {code:"PDL",name:"Pays de la Loire",poly:[[-2.15,47.05],[-2.55,47.5],[-2.15,47.9],[-1.5,48.1],[-0.6,48.0],[0.0,47.5],[-0.3,46.9],[-1.25,46.6],[-2.15,47.05]]},
- {code:"IDF",name:"Île-de-France",poly:[[1.7,49.15],[2.6,49.2],[3.05,48.85],[2.75,48.35],[1.85,48.4],[1.5,48.75],[1.7,49.15]]},
+ {code:"IDF",name:"Île-de-France",data:true,poly:[[1.7,49.15],[2.6,49.2],[3.05,48.85],[2.75,48.35],[1.85,48.4],[1.5,48.75],[1.7,49.15]]},
  {code:"GES",name:"Grand Est",poly:[[4.2,49.95],[5.8,49.55],[6.6,49.2],[7.6,49.05],[8.2,48.95],[7.6,48.3],[7.55,47.6],[6.4,47.7],[5.3,48.2],[4.3,48.6],[3.9,49.4],[4.2,49.95]]},
  {code:"CVL",name:"Centre-Val de Loire",poly:[[1.5,48.4],[1.85,48.4],[2.75,48.35],[3.0,47.9],[3.0,47.0],[2.1,46.5],[1.1,46.6],[0.6,47.3],[0.9,48.05],[1.5,48.4]]},
  {code:"BFC",name:"Bourgogne-Franche-Comté",poly:[[3.9,48.6],[4.3,48.6],[5.3,48.2],[6.4,47.7],[7.0,47.35],[6.1,46.6],[5.0,46.25],[4.0,46.5],[3.0,47.0],[3.0,47.9],[3.9,48.6]]},
@@ -457,23 +467,67 @@ let state={ year:2024, layer:"note_ville", selected:C[0].code, profile:"home", r
   weights:{...DEFAULT_WEIGHTS.home}, cmp:[C[0].code,C[2].code,C[5].code] };
 
 /* ---------- Carte ---------- */
-// --- Note de ville (qualité de vie) — reconstruite à partir de NOS sous-scores (open data)
-const NOTE_THEMES=[
-  {code:"education",label:"Éducation"},
-  {code:"transports",label:"Transports"},
-  {code:"prix",label:"Accessibilité prix"},
-  {code:"revenu",label:"Niveau de vie"},
-];
-function noteVille100(code,year){const s=subscores(year)[code];
-  const v=NOTE_THEMES.map(t=>s[t.code]).filter(x=>x!=null);
-  return v.length? v.reduce((a,b)=>a+b,0)/v.length : 0;}
-function noteThemes(code,year){const s=subscores(year)[code];
-  return NOTE_THEMES.map(t=>({label:t.label,note:Math.round(s[t.code]/10*10)/10}));}
-function grade(n10){return n10>=8?"A":n10>=6.5?"B":n10>=5?"C":"D";}
+// --- Note de ville : grille de ~20 thèmes. Valeurs ILLUSTRATIVES (démo) : réelles
+// là où dérivables de nos indicateurs, sinon synthétiques déterministes.
+const NOTE_CATEGORIES=["Accessibilité & transport","Attractivité","Citoyenneté & vie publique","Climat en 2050","Coût de la vie","Culture","Dynamisme","Économie & Travail","Éducation","Enseignement Supérieur","Innovation","Loisirs","Météo","Nature","Patrimoine","Qualité de vie","Risques naturels","Santé","Sport","Sécurité"];
+const QOL_SET=["Accessibilité & transport","Éducation","Santé","Sécurité","Coût de la vie","Culture","Nature","Qualité de vie"];
+function _fnv(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
+function _cat(code,cat){return _fnv(code+"§"+cat)%101;}
+C.forEach(c=>c.kind="commune");
+function notesOf(z){
+  if(z._notes) return z._notes;
+  const n={}; NOTE_CATEGORIES.forEach(c=>n[c]=_cat(z.code,c));
+  if(z.kind==="commune"){
+    const s=subscores(2024)[z.code];
+    n["Accessibilité & transport"]=Math.round(s.transports);
+    n["Éducation"]=Math.round(s.education);
+    n["Coût de la vie"]=Math.round(s.prix);
+    n["Économie & Travail"]=Math.round(s.revenu);
+    n["Qualité de vie"]=Math.round((s.education+s.transports+s.revenu+s.prix)/4);
+  } else {
+    n["Accessibilité & transport"]=88+_cat(z.code,"t")%13;
+    n["Culture"]=82+_cat(z.code,"c")%19;
+    n["Patrimoine"]=62+_cat(z.code,"p")%38;
+    n["Enseignement Supérieur"]=58+_cat(z.code,"es")%42;
+    n["Innovation"]=68+_cat(z.code,"in")%33;
+    n["Dynamisme"]=80+_cat(z.code,"dy")%21;
+    n["Coût de la vie"]=1+_cat(z.code,"cv")%10;
+    n["Nature"]=8+_cat(z.code,"na")%22;
+    n["Loisirs"]=60+_cat(z.code,"lo")%40;
+  }
+  z._notes=n; return n;
+}
+function noteVille100(z){const n=notesOf(z);const v=QOL_SET.map(c=>n[c]);return v.reduce((a,b)=>a+b,0)/v.length;}
+function grade(n10){return n10>=8?"A":n10>=6.5?"B":n10>=5?"C":n10>=3.5?"D":"E";}
+function noteGridHTML(z){
+  const n=notesOf(z), vals=NOTE_CATEGORIES.map(c=>n[c]), min=Math.min(...vals);
+  return `<div class="notegrid">`+NOTE_CATEGORIES.map(c=>{
+    const v=n[c], badge=v>=85?" 🏆":(v===min&&v<=12?" 🍐":""), cls=v>=80?"hi":v<=20?"lo":"";
+    return `<div class="ng ${cls}"><span class="ngl">${c}</span><span class="ngv">${v}${badge}</span></div>`;
+  }).join("")+`</div>`;
+}
+
+// --- Arrondissements de Paris (Île-de-France) — géométrie stylisée (escargot).
+const ARR=[
+ ["75101","Paris 1ᵉʳ",2.336,48.862],["75102","Paris 2ᵉ",2.342,48.868],["75103","Paris 3ᵉ",2.360,48.863],
+ ["75104","Paris 4ᵉ",2.357,48.854],["75105","Paris 5ᵉ",2.344,48.844],["75106","Paris 6ᵉ",2.333,48.849],
+ ["75107","Paris 7ᵉ",2.312,48.856],["75108","Paris 8ᵉ",2.312,48.872],["75109","Paris 9ᵉ",2.338,48.877],
+ ["75110","Paris 10ᵉ",2.360,48.876],["75111","Paris 11ᵉ",2.380,48.859],["75112","Paris 12ᵉ",2.408,48.840],
+ ["75113","Paris 13ᵉ",2.362,48.828],["75114","Paris 14ᵉ",2.327,48.829],["75115","Paris 15ᵉ",2.293,48.840],
+ ["75116","Paris 16ᵉ",2.262,48.858],["75117","Paris 17ᵉ",2.307,48.887],["75118","Paris 18ᵉ",2.348,48.892],
+ ["75119","Paris 19ᵉ",2.382,48.887],["75120","Paris 20ᵉ",2.401,48.866],
+].map(([code,nom,lon,lat])=>{const d=0.010;
+  return {code,nom,kind:"arrondissement",lon,lat,
+    geometry:[[lon-d,lat-d],[lon+d,lat-d],[lon+d,lat+d],[lon-d,lat+d],[lon-d,lat-d]],
+    prix:9000+_fnv(code)%5000, population:15000+_fnv(code+"p")%180000};});
+const ALLZONES=C.concat(ARR);
+const byAny=Object.fromEntries(ALLZONES.map(z=>[z.code,z]));
+function zonesOf(region){return region==="IDF"?ARR:C;}
+function insetProjFor(region){return makeProj(bboxOf(zonesOf(region).flatMap(z=>z.geometry)), INSET.x+10, INSET.y+30, INSET.w-20, INSET.h-42, 4);}
 
 const SCORE_LAYERS=[{code:"note_ville",label:"Note de ville"},{code:"home_score",label:"Home Score"},{code:"investment_score",label:"Investment Score"}];
 function layerValue(c,layer,year){
-  if(layer==="note_ville") return noteVille100(c.code,year);
+  if(layer==="note_ville") return noteVille100(c);
   if(layer==="home_score"){const s=subscores(year);return scoreZone(s[c.code],DEFAULT_WEIGHTS.home).score;}
   if(layer==="investment_score"){const s=subscores(year);return scoreZone(s[c.code],DEFAULT_WEIGHTS.investment).score;}
   return indVal(c,layer,year);
@@ -486,7 +540,10 @@ function layerMeta(layer){
 }
 function renderLayerChips(){
   const el=document.getElementById("layerchips"); el.innerHTML="";
-  [...SCORE_LAYERS,...DATA.layers.map(l=>({code:l.code,label:l.label,est:l.is_estimated}))].forEach(l=>{
+  const list=state.region==="IDF"
+    ? [{code:"note_ville",label:"Note de ville"}]
+    : [...SCORE_LAYERS,...DATA.layers.map(l=>({code:l.code,label:l.label,est:l.is_estimated}))];
+  list.forEach(l=>{
     const b=document.createElement("button"); b.className="chip"; b.setAttribute("aria-pressed",l.code===state.layer);
     b.innerHTML=l.label+(l.est?' <span class="e">est.</span>':"");
     b.onclick=()=>{state.layer=l.code;renderLayerChips();renderMap();};
@@ -503,7 +560,7 @@ function renderMap(){
   const vals=C.map(c=>layerValue(c,state.layer,2024));
   const min=meta.score?0:Math.min(...vals), max=meta.score?100:Math.max(...vals);
   const ramp=meta.score?RAMP_DIV:RAMP_SEQ;
-  const naq=state.region==="NAQ";
+  const hasData=!!regionBy[state.region].data;
   const svg=document.getElementById("mapsvg"); svg.innerHTML="";
 
   // Fond France (masque les jointures des régions)
@@ -514,7 +571,9 @@ function renderMap(){
   REGIONS.forEach(r=>{
     const cls="region"+(r.data?" has-data":" nodata")+(r.code===state.region?" sel":"");
     const p=svgEl("path",{d:ringPath(r.poly,franceProj),class:cls,tabindex:"0",role:"button","aria-label":r.name});
-    const act=()=>{state.region=r.code; if(r.data) state.selected=C[0].code; renderMap(); renderRightPanel();};
+    const act=()=>{state.region=r.code;
+      if(r.data){state.selected=zonesOf(r.code)[0].code; if(r.code==="IDF") state.layer="note_ville";}
+      renderLayerChips(); renderMap(); renderRightPanel();};
     p.onclick=act; p.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}};
     const ttl=svgEl("title"); ttl.textContent=r.name+(r.data?" · données disponibles":" · hors périmètre démo"); p.appendChild(ttl);
     svg.appendChild(p);
@@ -522,24 +581,28 @@ function renderMap(){
   const ftitle=svgEl("text",{x:14,y:24,class:"ftitle"}); ftitle.textContent="France métropolitaine — cliquez une région";
   svg.appendChild(ftitle);
 
-  // Nouvelle-Aquitaine sélectionnée → repère Gironde + encart communes
-  if(naq){
-    const gx=avg(C.map(c=>centroid(c.geometry,franceProj)[0]));
-    const gy=avg(C.map(c=>centroid(c.geometry,franceProj)[1]));
+  // Région à données sélectionnée → repère + encart zones (communes ou arrondissements)
+  if(hasData){
+    const zones=zonesOf(state.region), ip=insetProjFor(state.region);
+    const gx=avg(zones.map(z=>centroid(z.geometry,franceProj)[0]));
+    const gy=avg(zones.map(z=>centroid(z.geometry,franceProj)[1]));
     svg.appendChild(svgEl("circle",{cx:gx,cy:gy,r:10,class:"locus"}));
     svg.appendChild(svgEl("line",{x1:gx+9,y1:gy,x2:INSET.x,y2:INSET.y+14,class:"leader"}));
     svg.appendChild(svgEl("rect",{x:INSET.x,y:INSET.y,width:INSET.w,height:INSET.h,rx:8,class:"inset"}));
-    const it=svgEl("text",{x:INSET.x+10,y:INSET.y+18,class:"ftitle"}); it.textContent="Gironde — détail"; svg.appendChild(it);
-    C.forEach(c=>{const p=svgEl("path",{d:ringPath(c.geometry,insetProj),fill:colorFor(c,meta,min,max,ramp)});
-      p.setAttribute("class","cell"+(c.code===state.selected?" sel":""));
-      p.onclick=()=>{state.selected=c.code;renderMap();renderRightPanel();};
+    const it=svgEl("text",{x:INSET.x+10,y:INSET.y+18,class:"ftitle"});
+    it.textContent=state.region==="IDF"?"Paris — arrondissements":"Gironde — détail"; svg.appendChild(it);
+    zones.forEach(z=>{const p=svgEl("path",{d:ringPath(z.geometry,ip),fill:colorFor(z,meta,min,max,ramp)});
+      p.setAttribute("class","cell"+(z.code===state.selected?" sel":""));
+      p.onclick=()=>{state.selected=z.code;renderMap();renderRightPanel();};
+      const tt=svgEl("title"); tt.textContent=z.nom; p.appendChild(tt);
       svg.appendChild(p);});
-    C.forEach(c=>{const ct=centroid(c.geometry,insetProj);
-      const t=svgEl("text",{x:ct[0],y:ct[1],"text-anchor":"middle",class:"clab"});t.textContent=c.nom;svg.appendChild(t);});
+    zones.forEach(z=>{const ct=centroid(z.geometry,ip);
+      const lab=z.kind==="arrondissement"?String(+z.code.slice(3)):z.nom;
+      const t=svgEl("text",{x:ct[0],y:ct[1],"text-anchor":"middle",class:"clab"});t.textContent=lab;svg.appendChild(t);});
   }
 
-  const leg=document.querySelector(".legend"); leg.style.display=naq?"flex":"none";
-  if(naq){
+  const leg=document.querySelector(".legend"); leg.style.display=hasData?"flex":"none";
+  if(hasData){
     document.getElementById("legMin").textContent=meta.score?"0":fmtV(min,meta.unit);
     document.getElementById("legMax").textContent=meta.score?"100":fmtV(max,meta.unit);
     document.getElementById("legRamp").style.background=`linear-gradient(90deg,${ramp.join(",")})`;
@@ -556,7 +619,36 @@ function naqAggregate(){
     best:best.c.nom, bestScore:best.s, n:C.length,
   };
 }
-function communeFicheHTML(c){
+function idfAggregate(){
+  const best=ARR.map(z=>({z,n:noteVille100(z)})).sort((a,b)=>b.n-a.n)[0];
+  return {prix:avg(ARR.map(z=>z.prix)), pop:ARR.reduce((a,z)=>a+z.population,0),
+    note:avg(ARR.map(z=>noteVille100(z)))/10, best:best.z.nom,
+    bestNote:Math.round(best.n/10*10)/10, n:ARR.length};
+}
+function noteHeaderHTML(z){
+  const nv10=Math.round(noteVille100(z)/10*10)/10, g=grade(nv10);
+  return `<div class="noteville">
+      <div class="nv-head"><span class="nv-grade nv-${g}">${g}</span>
+        <div><div class="nv-lab">Note de ville globale</div><div class="nv-val">${nv10.toFixed(1)}<small>/10</small></div></div>
+        <div class="nv-hint">moyenne des thèmes cadre de vie</div>
+      </div>
+      ${noteGridHTML(z)}
+      <small class="nv-src">Notes ILLUSTRATIVES (démo) : réelles là où dérivables de nos indicateurs
+      (transport, éducation, coût de la vie, économie), sinon reconstruites de façon déterministe.
+      🏆 = point fort (≥ 85) · 🍐 = point faible marqué.</small>
+    </div>`;
+}
+function zoneFicheHTML(z){
+  if(z.kind==="arrondissement"){
+    return `<h3 style="font-size:1.05rem;margin-top:2px">${z.nom}
+        <span class="conf ok" style="vertical-align:middle">Paris intra-muros</span></h3>
+      <div class="regagg" style="margin-bottom:10px">
+        <div><span class="k">Prix indicatif</span><b>${fmtV(z.prix,"€/m²")} <em class="est">est.</em></b></div>
+        <div><span class="k">Population</span><b>${eur(z.population)}</b></div>
+      </div>
+      ${noteHeaderHTML(z)}`;
+  }
+  const c=z;
   const subs=subscores(2024);
   const home=scoreZone(subs[c.code],DEFAULT_WEIGHTS.home), inv=scoreZone(subs[c.code],DEFAULT_WEIGHTS.investment);
   const cl=c.confidence_score>=75?"ok":c.confidence_score>=60?"mid":"low";
@@ -566,18 +658,8 @@ function communeFicheHTML(c){
       <td class="val">${fmtV(v,ind.unit)}${ind.is_estimated?' <span class="est">est.</span>':""}</td></tr>`;}).join("");
   const why=home.breakdown.slice(0,2).map(b=>b.label).join(", ");
   const hist=[{millesime:"2023",value:Math.round(c.prix_2024/1.065)},{millesime:"2024",value:c.prix_2024}];
-  const nv10=Math.round(noteVille100(c.code,2024)/10*10)/10, g=grade(nv10);
-  const themes=noteThemes(c.code,2024);
   return `<h3 style="font-size:1.05rem;margin-top:2px">${c.nom} <span class="conf ${cl}" style="vertical-align:middle">Confiance ${c.confidence_score}%</span></h3>
-    <div class="noteville">
-      <div class="nv-head"><span class="nv-grade nv-${g}">${g}</span>
-        <div><div class="nv-lab">Note de ville</div><div class="nv-val">${nv10.toFixed(1)}<small>/10</small></div></div>
-      </div>
-      <div class="nv-themes">
-        ${themes.map(t=>`<div class="nv-t"><span>${t.label}</span><span class="nv-tb"><i style="width:${t.note*10}%"></i></span><b>${t.note.toFixed(1)}</b></div>`).join("")}
-      </div>
-      <small class="nv-src">Note reconstruite à partir de données publiques (DVF, INSEE, éducation, transports) — méthodologie ouverte.</small>
-    </div>
+    ${noteHeaderHTML(c)}
     <div class="scorepair">
       <div class="scorebox"><div class="k">🏠 Home Score</div><div class="v">${home.score}<small>/100</small></div><div class="meter"><i style="width:${home.score}%"></i></div></div>
       <div class="scorebox"><div class="k">📈 Investment</div><div class="v">${inv.score}<small>/100</small></div><div class="meter"><i style="width:${inv.score}%"></i></div></div>
@@ -600,18 +682,31 @@ function renderRightPanel(){
     return;
   }
   chips.style.display="flex";
-  const a=naqAggregate();
-  el.innerHTML=`<p class="hint">Région · <span style="color:var(--good)">échantillon disponible</span></p>
-    <h2>${reg.name}</h2>
-    <div class="regagg">
+  let aggHTML, footHint;
+  if(state.region==="IDF"){
+    const a=idfAggregate();
+    aggHTML=`<div class="regagg">
+      <div><span class="k">Note de ville moyenne</span><b>${a.note.toFixed(1)}<small>/10</small></b></div>
+      <div><span class="k">Prix moyen</span><b>${fmtV(a.prix,"€/m²")} <em class="est">est.</em></b></div>
+      <div><span class="k">Population</span><b>${eur(a.pop)}</b></div>
+      <div><span class="k">Meilleure note</span><b>${a.best} · ${a.bestNote}/10</b></div>
+    </div>
+    <p class="hint" style="margin-top:8px">${a.n} arrondissements · cliquez-en un dans l'encart « Paris — arrondissements ».</p>`;
+  } else {
+    const a=naqAggregate();
+    aggHTML=`<div class="regagg">
       <div><span class="k">Prix moyen</span><b>${fmtV(a.prix,"€/m²")}</b></div>
       <div><span class="k">Loyer moyen</span><b>${fmtV(a.loyer,"€/m²")} <em class="est">est.</em></b></div>
       <div><span class="k">Rendement moyen</span><b>${fmtV(a.rend,"%")}</b></div>
       <div><span class="k">Meilleur Home Score</span><b>${a.best} · ${a.bestScore}</b></div>
     </div>
-    <p class="hint" style="margin-top:8px">Échantillon : ${a.n} communes · confiance moyenne ${Math.round(a.conf)}% · cliquez une commune dans l'encart.</p>
+    <p class="hint" style="margin-top:8px">Échantillon : ${a.n} communes · confiance moyenne ${Math.round(a.conf)}% · cliquez une commune dans l'encart.</p>`;
+  }
+  el.innerHTML=`<p class="hint">Région · <span style="color:var(--good)">${state.region==="IDF"?"arrondissements disponibles":"échantillon disponible"}</span></p>
+    <h2>${reg.name}</h2>
+    ${aggHTML}
     <hr class="sep">
-    ${communeFicheHTML(byCode[state.selected])}`;
+    ${zoneFicheHTML(byAny[state.selected])}`;
 }
 function sparkSVG(hist){const w=120,h=32,p=3,vs=hist.map(x=>x.value),mn=Math.min(...vs),mx=Math.max(...vs);
   const pts=hist.map((x,i)=>`${p+i*(w-2*p)/(hist.length-1)},${h-p-((x.value-mn)/((mx-mn)||1))*(h-2*p)}`).join(" ");
