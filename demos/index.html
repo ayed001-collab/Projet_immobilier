@@ -108,6 +108,19 @@
   .detail{padding:16px}
   .detail .hint{color:var(--muted);font-size:.86rem}
   .detail h2{font-size:1.25rem;letter-spacing:-.01em}
+  .noteville{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 6%,transparent),transparent)}
+  .nv-head{display:flex;align-items:center;gap:12px}
+  .nv-grade{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-size:1.5rem;font-weight:800;color:#fff}
+  .nv-A{background:#1a7f4b}.nv-B{background:#5c9e3a}.nv-C{background:#c9a227}.nv-D{background:#c0392b}
+  .nv-lab{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-family:var(--mono)}
+  .nv-val{font-size:1.7rem;font-weight:800;color:var(--ink);line-height:1}
+  .nv-val small{font-size:.8rem;color:var(--muted);font-weight:500}
+  .nv-themes{display:flex;flex-direction:column;gap:5px;margin:10px 0 6px}
+  .nv-t{display:grid;grid-template-columns:110px 1fr 30px;align-items:center;gap:8px;font-size:.8rem;color:var(--ink-soft)}
+  .nv-tb{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+  .nv-tb i{display:block;height:100%;background:var(--accent)}
+  .nv-t b{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.76rem;color:var(--ink)}
+  .nv-src{font-size:.68rem;color:var(--muted);display:block}
   .scorepair{display:flex;gap:10px;margin:12px 0}
   .scorebox{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px}
   .scorebox .k{font-size:.72rem;color:var(--muted)}
@@ -440,17 +453,33 @@ const regionBy=Object.fromEntries(REGIONS.map(r=>[r.code,r]));
 const avg=a=>a.reduce((s,x)=>s+x,0)/a.length;
 
 /* ---------- État ---------- */
-let state={ year:2024, layer:"home_score", selected:C[0].code, profile:"home", region:"NAQ",
+let state={ year:2024, layer:"note_ville", selected:C[0].code, profile:"home", region:"NAQ",
   weights:{...DEFAULT_WEIGHTS.home}, cmp:[C[0].code,C[2].code,C[5].code] };
 
 /* ---------- Carte ---------- */
-const SCORE_LAYERS=[{code:"home_score",label:"Home Score"},{code:"investment_score",label:"Investment Score"}];
+// --- Note de ville (qualité de vie) — reconstruite à partir de NOS sous-scores (open data)
+const NOTE_THEMES=[
+  {code:"education",label:"Éducation"},
+  {code:"transports",label:"Transports"},
+  {code:"prix",label:"Accessibilité prix"},
+  {code:"revenu",label:"Niveau de vie"},
+];
+function noteVille100(code,year){const s=subscores(year)[code];
+  const v=NOTE_THEMES.map(t=>s[t.code]).filter(x=>x!=null);
+  return v.length? v.reduce((a,b)=>a+b,0)/v.length : 0;}
+function noteThemes(code,year){const s=subscores(year)[code];
+  return NOTE_THEMES.map(t=>({label:t.label,note:Math.round(s[t.code]/10*10)/10}));}
+function grade(n10){return n10>=8?"A":n10>=6.5?"B":n10>=5?"C":"D";}
+
+const SCORE_LAYERS=[{code:"note_ville",label:"Note de ville"},{code:"home_score",label:"Home Score"},{code:"investment_score",label:"Investment Score"}];
 function layerValue(c,layer,year){
+  if(layer==="note_ville") return noteVille100(c.code,year);
   if(layer==="home_score"){const s=subscores(year);return scoreZone(s[c.code],DEFAULT_WEIGHTS.home).score;}
   if(layer==="investment_score"){const s=subscores(year);return scoreZone(s[c.code],DEFAULT_WEIGHTS.investment).score;}
   return indVal(c,layer,year);
 }
 function layerMeta(layer){
+  if(layer==="note_ville") return {label:"Note de ville",unit:"/100",dir:"higher_better",score:true};
   if(layer==="home_score") return {label:"Home Score",unit:"/100",dir:"higher_better",score:true};
   if(layer==="investment_score") return {label:"Investment Score",unit:"/100",dir:"higher_better",score:true};
   const l=DATA.layers.find(x=>x.code===layer); return {label:l.label,unit:l.unit,dir:l.direction,score:false};
@@ -537,7 +566,18 @@ function communeFicheHTML(c){
       <td class="val">${fmtV(v,ind.unit)}${ind.is_estimated?' <span class="est">est.</span>':""}</td></tr>`;}).join("");
   const why=home.breakdown.slice(0,2).map(b=>b.label).join(", ");
   const hist=[{millesime:"2023",value:Math.round(c.prix_2024/1.065)},{millesime:"2024",value:c.prix_2024}];
+  const nv10=Math.round(noteVille100(c.code,2024)/10*10)/10, g=grade(nv10);
+  const themes=noteThemes(c.code,2024);
   return `<h3 style="font-size:1.05rem;margin-top:2px">${c.nom} <span class="conf ${cl}" style="vertical-align:middle">Confiance ${c.confidence_score}%</span></h3>
+    <div class="noteville">
+      <div class="nv-head"><span class="nv-grade nv-${g}">${g}</span>
+        <div><div class="nv-lab">Note de ville</div><div class="nv-val">${nv10.toFixed(1)}<small>/10</small></div></div>
+      </div>
+      <div class="nv-themes">
+        ${themes.map(t=>`<div class="nv-t"><span>${t.label}</span><span class="nv-tb"><i style="width:${t.note*10}%"></i></span><b>${t.note.toFixed(1)}</b></div>`).join("")}
+      </div>
+      <small class="nv-src">Note reconstruite à partir de données publiques (DVF, INSEE, éducation, transports) — méthodologie ouverte.</small>
+    </div>
     <div class="scorepair">
       <div class="scorebox"><div class="k">🏠 Home Score</div><div class="v">${home.score}<small>/100</small></div><div class="meter"><i style="width:${home.score}%"></i></div></div>
       <div class="scorebox"><div class="k">📈 Investment</div><div class="v">${inv.score}<small>/100</small></div><div class="meter"><i style="width:${inv.score}%"></i></div></div>
