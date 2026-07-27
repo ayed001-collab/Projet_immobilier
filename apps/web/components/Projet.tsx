@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   fetchWeights, postFinance, postScore, createProject, getProject, updateProject,
-  getProjectAlerts, fetchCommunes, postSimulate,
+  getProjectAlerts, fetchCommunes, postSimulate, toggleFavorite,
   type WeightsResponse, type FinanceResult, type ScoreResponse, type ProjectAlerts,
   type RankedZone, type SimResult, type CommuneProps,
 } from "@/lib/api";
@@ -36,6 +36,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
   const [saving, setSaving] = useState(false);
   const [alerts, setAlerts] = useState<ProjectAlerts | null>(null);
   const [communeInd, setCommuneInd] = useState<Record<string, { nom: string; prix: number; loyer: number }>>({});
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchWeights(type)
@@ -75,6 +76,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
           budget: proj.payload.budget ?? null, surface: proj.payload.surface ?? null,
           results: proj.results,
         });
+        setFavorites(new Set(proj.favorites.map((f) => f.code_commune)));
         setStep(3);
       })
       .catch(() => setError("Projet introuvable."));
@@ -138,6 +140,7 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
       budget: finance?.budget_achat ?? null,
       surface,
       finance: { apport, revenus, taux, duree },
+      favorites: Array.from(favorites),
     };
     try {
       const proj = savedId
@@ -154,6 +157,15 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
       setError("Erreur lors de la sauvegarde du projet.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleFav(code: string) {
+    const next = new Set(favorites);
+    if (next.has(code)) next.delete(code); else next.add(code);
+    setFavorites(next);
+    if (savedId) {
+      try { await toggleFavorite(savedId, code); } catch { /* état local conservé */ }
     }
   }
 
@@ -297,6 +309,12 @@ export default function Projet({ type, initialId }: { type: ProfileType; initial
                 <li key={r.zone_id} className={r.within_budget === false ? "over" : ""}>
                   <div className="rrow">
                     <span className="rrank">{r.rank}</span>
+                    <button
+                      className={favorites.has(r.zone_id) ? "fav on" : "fav"}
+                      onClick={() => toggleFav(r.zone_id)}
+                      aria-label={favorites.has(r.zone_id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      title={savedId ? "Favori" : "Favori (sera enregistré avec le projet)"}
+                    >{favorites.has(r.zone_id) ? "★" : "☆"}</button>
                     <span className="rname">{r.nom_commune}</span>
                     {r.score_delta != null && r.score_delta !== 0 && (
                       <span className={`delta ${r.score_delta > 0 ? "up" : "down"}`}>

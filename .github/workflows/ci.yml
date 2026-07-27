@@ -100,6 +100,10 @@ jobs:
           assert all("score_delta" in r for r in got["results"])
           al = c.get(f"/api/projects/{proj['id']}/alerts").json()
           assert "count" in al and isinstance(al["events"], list)  # 0 sans changement de données
+          fav = c.post(f"/api/projects/{proj['id']}/favorites", json={"code": "33063"}).json()
+          assert any(f["code_commune"] == "33063" for f in fav["favorites"])
+          fav2 = c.post(f"/api/projects/{proj['id']}/favorites", json={"code": "33063"}).json()
+          assert all(f["code_commune"] != "33063" for f in fav2["favorites"])  # toggle off
           assert c.get("/api/projects/deadbeef0000").status_code == 404
           assert c.get("/api/projects/deadbeef0000/alerts").status_code == 404
           # Back-office data.

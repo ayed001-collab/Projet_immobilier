@@ -288,6 +288,19 @@ pour une commune choisie, le **cash-flow** et les rendements.
 rendement brut 3,68 % / net 2,05 % / cash-flow −790 €/mois), CI (smoke + validation),
 `next build` + typecheck.
 
+## Incrément 10 — Favoris
+
+Rattachés au **projet persistant** (aucune authentification requise à ce stade) :
+- **API** `POST /api/projects/{id}/favorites` : ajoute/retire une commune des favoris
+  (stockés dans le projet), renvoie les favoris **enrichis** (nom, Home/Investment
+  Score, confiance, prix). Les favoris sont aussi acceptés dans le payload du projet
+  et rechargés avec lui.
+- **Front** : étoile ★/☆ sur chaque zone des résultats ; persistée immédiatement si
+  le projet est sauvegardé, sinon enregistrée avec le projet à la sauvegarde.
+
+**Vérifié** : API favoris (ajout/retrait/persistance/404), CI (smoke toggle),
+`next build` + typecheck.
+
 ## Avertissement
 
 Les recommandations produites par cette plateforme sont des **aides à la décision**, jamais des conseils en investissement au sens réglementaire. L'utilisateur reste **seul décisionnaire**. Aucune donnée n'est présentée sans source ni date, et aucune prévision n'est présentée comme une certitude.
