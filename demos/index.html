@@ -6,6 +6,7 @@
     --good:#1a7f4b; --warn:#b7791f; --bad:#c0392b;
     --est:#a15c00;
     --chip:#eef3f7;
+    --mapbg:#fbf3d5; --mapdept:#9a8a5f; --seine:#7fb2e6; --cellstroke:#ffffff;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
     --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --shadow:0 1px 3px rgba(15,39,64,.08),0 6px 20px rgba(15,39,64,.10);
@@ -18,17 +19,20 @@
       --accent:#4aa6d8; --accent-ink:#7cc2e8;
       --good:#4cc17e; --warn:#e0a53a; --bad:#e86a5c; --est:#d69a4a;
       --chip:#1a2b3b; --shadow:0 1px 3px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+      --mapbg:#0f1a24; --mapdept:#5b6b7b; --seine:#3a6a9a; --cellstroke:#0c1620;
     }
   }
   :root[data-theme="light"]{
     --ink:#0f2740; --ink-soft:#33475b; --muted:#6a7c8c; --paper:#e9edf1; --card:#fff; --line:#d5dde4;
     --accent:#0d6b9e; --accent-ink:#0a5680; --good:#1a7f4b; --warn:#b7791f; --bad:#c0392b; --est:#a15c00;
     --chip:#eef3f7; --shadow:0 1px 3px rgba(15,39,64,.08),0 6px 20px rgba(15,39,64,.10);
+    --mapbg:#fbf3d5; --mapdept:#9a8a5f; --seine:#7fb2e6; --cellstroke:#ffffff;
   }
   :root[data-theme="dark"]{
     --ink:#e8eef4; --ink-soft:#b9c6d2; --muted:#8598a8; --paper:#0c1620; --card:#132231; --line:#243545;
     --accent:#4aa6d8; --accent-ink:#7cc2e8; --good:#4cc17e; --warn:#e0a53a; --bad:#e86a5c; --est:#d69a4a;
     --chip:#1a2b3b; --shadow:0 1px 3px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+    --mapbg:#0f1a24; --mapdept:#5b6b7b; --seine:#3a6a9a; --cellstroke:#0c1620;
   }
 
   *{box-sizing:border-box}
@@ -105,6 +109,12 @@
     text-transform:uppercase;opacity:.8;pointer-events:none}
   svg.map .ftitle{font-family:var(--mono);font-size:9px;fill:var(--muted);letter-spacing:.05em;
     text-transform:uppercase;pointer-events:none}
+  svg.map .deptlab{font-family:var(--sans);font-weight:800;font-size:13px;fill:var(--mapdept);
+    letter-spacing:.06em;opacity:.9;paint-order:stroke;stroke:var(--mapbg);stroke-width:2.6px;pointer-events:none}
+  svg.map .legbox{fill:var(--card);stroke:var(--line);stroke-width:1;opacity:.96}
+  svg.map .legtitle{font-family:var(--sans);font-weight:700;font-size:11px;fill:var(--ink);pointer-events:none}
+  svg.map .legsub{font-family:var(--sans);font-size:9px;fill:var(--muted);pointer-events:none}
+  svg.map .leglab{font-family:var(--mono);font-size:10px;fill:var(--ink-soft);pointer-events:none}
   .ringchip .rdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
   .horsband{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
   .horsband .hb-t{font-size:.78rem;font-weight:600;color:var(--ink-soft);margin-bottom:8px}
@@ -589,13 +599,49 @@ const RINGS=[
   {code:"hors",  label:"Hors couronnes",   color:"#8a63c0"},
 ];
 const ringBy=Object.fromEntries(RINGS.map(r=>[r.code,r]));
-// Projection Grand Paris (Île-de-France) — moitié gauche ; encart Paris à droite.
-const parisProj=makeProj(bboxOf(IDF_ZONES.flatMap(z=>z.geometry)), 14,40, VW-210, VH-80, 8);
-const PARIS_INSET={x:VW-186,y:66,w:172,h:214};
-const parisInsetProj=makeProj(bboxOf(ARR.flatMap(z=>z.geometry)),
-  PARIS_INSET.x+8, PARIS_INSET.y+26, PARIS_INSET.w-16, PARIS_INSET.h-34, 4);
+/* ===== Carte choroplèthe façon carte administrative (tessellation de Voronoï) ===== */
+// Communes dessinées sur le plan : Paris + petite couronne (comme la carte de référence).
+const MAP_ZONES=ARR.concat(PC);
+const mapProj=makeProj(bboxOf(MAP_ZONES.map(z=>[z.lon,z.lat])), 12,30, VW-24, VH-64, 30);
+// La Seine (tracé stylisé lon/lat) + confluence de la Marne.
+const SEINE=[[2.415,48.815],[2.39,48.823],[2.365,48.840],[2.335,48.852],[2.305,48.853],
+  [2.278,48.846],[2.253,48.841],[2.233,48.845],[2.223,48.863],[2.233,48.884],
+  [2.253,48.902],[2.283,48.914],[2.305,48.928],[2.298,48.948]];
+const MARNE=[[2.52,48.792],[2.47,48.808],[2.435,48.812],[2.415,48.815]];
+// --- Géométrie : Voronoï par découpe de demi-plans (Sutherland–Hodgman) ---
+function clipHalf(poly,M,n){const out=[],val=p=>(p[0]-M[0])*n[0]+(p[1]-M[1])*n[1];
+  for(let i=0;i<poly.length;i++){const A=poly[i],B=poly[(i+1)%poly.length],va=val(A),vb=val(B);
+    if(va>=0)out.push(A);
+    if((va>=0)!==(vb>=0)){const t=va/(va-vb);out.push([A[0]+t*(B[0]-A[0]),A[1]+t*(B[1]-A[1])]);}}
+  return out;}
+function convexHull(pts){const P=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[]; for(const p of P){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  const up=[]; for(let i=P.length-1;i>=0;i--){const p=P[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
+  lo.pop();up.pop();return lo.concat(up);}
+function expandPoly(poly,d){const c=[avg(poly.map(p=>p[0])),avg(poly.map(p=>p[1]))];
+  return poly.map(p=>{const dx=p[0]-c[0],dy=p[1]-c[1],L=Math.hypot(dx,dy)||1;return [p[0]+dx/L*d,p[1]+dy/L*d];});}
+function voronoiCells(sites,bound){return sites.map((s,i)=>{let poly=bound.slice();
+  for(let j=0;j<sites.length;j++){if(j===i)continue;const t=sites[j];
+    poly=clipHalf(poly,[(s[0]+t[0])/2,(s[1]+t[1])/2],[s[0]-t[0],s[1]-t[1]]); if(poly.length<3)break;}
+  return poly;});}
+function polyPath(pts){return pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ")+" Z";}
+function linePath(pts){return pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");}
+function polyCentroid(pts){let a=0,cx=0,cy=0;
+  for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],w=p[0]*q[1]-q[0]*p[1];a+=w;cx+=(p[0]+q[0])*w;cy+=(p[1]+q[1])*w;}
+  a*=0.5; if(Math.abs(a)<1e-6)return [avg(pts.map(p=>p[0])),avg(pts.map(p=>p[1]))];
+  return [cx/(6*a),cy/(6*a)];}
+function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p[0]*q[1]-q[0]*p[1];}return Math.abs(a)/2;}
+// --- Choroplèthe : classes par quantiles + rampe chaude (jaune bas → rouge haut) ---
+const WARM=["#fdeaa6","#fbc85f","#f59a44","#ea6a3a","#d4372c"];
+function classBreaks(vals,k){const s=vals.slice().sort((a,b)=>a-b),br=[];
+  for(let i=1;i<k;i++)br.push(s[Math.floor(i*s.length/k)]);return br;}
+function classIndex(v,br){let i=0;while(i<br.length&&v>=br[i])i++;return i;}
+const DEPTS=[{code:"75",nom:"PARIS",zs:ARR},
+  {code:"92",nom:"HAUTS-DE-SEINE",zs:PC.filter(z=>z.dept==="92")},
+  {code:"93",nom:"SEINE-SAINT-DENIS",zs:PC.filter(z=>z.dept==="93")},
+  {code:"94",nom:"VAL-DE-MARNE",zs:PC.filter(z=>z.dept==="94")}];
 
-function noteColor(z){return lerpRamp(noteVille100(z)/100, RAMP_DIV);}
 // Chips = filtres par couronne (Paris / petite / grande / hors couronnes)
 function renderLayerChips(){
   const el=document.getElementById("layerchips"); el.innerHTML="";
@@ -603,82 +649,93 @@ function renderLayerChips(){
     const on=state.rings[r.code];
     const b=document.createElement("button"); b.className="chip ringchip"; b.setAttribute("aria-pressed",on);
     b.innerHTML=`<span class="rdot" style="background:${r.color}"></span>${r.label}`;
-    b.onclick=()=>{state.rings[r.code]=!state.rings[r.code]; renderLayerChips(); renderMap(); renderHorsBand(); renderRightPanel();};
+    b.onclick=()=>{state.rings[r.code]=!state.rings[r.code]; renderLayerChips(); renderMap(); renderBands(); renderRightPanel();};
     el.appendChild(b);
   });
 }
 function renderMap(){
   const svg=document.getElementById("mapsvg"); svg.innerHTML="";
-  const title=svgEl("text",{x:14,y:24,class:"ftitle"});
-  title.textContent="Grand Paris — Paris intra-muros & couronnes (cliquez une zone)"; svg.appendChild(title);
+  document.querySelector(".legend").style.display="none";
+  // Fond papier
+  svg.appendChild(svgEl("rect",{x:0,y:0,width:VW,height:VH,fill:"var(--mapbg)"}));
+  const title=svgEl("text",{x:14,y:22,class:"ftitle"});
+  title.textContent="Paris & petite couronne — note de ville par commune"; svg.appendChild(title);
 
-  // Centre de Paris + cercles guides des couronnes
-  const ps0=ARR.map(z=>centroid(z.geometry,parisProj));
-  const cen=[avg(ps0.map(p=>p[0])),avg(ps0.map(p=>p[1]))];
-  const ringRadius=zs=>{const ds=zs.map(z=>{const p=centroid(z.geometry,parisProj);
-    return Math.hypot(p[0]-cen[0],p[1]-cen[1]);}).sort((a,b)=>a-b); return ds[Math.floor(ds.length/2)];};
-  [["petite",PC],["grande",GC]].forEach(([ring,zs])=>{
-    if(!state.rings[ring])return; const r=ringRadius(zs), col=ringBy[ring].color;
-    svg.appendChild(svgEl("circle",{cx:cen[0],cy:cen[1],r:r,class:"crown",stroke:col}));
-    const lt=svgEl("text",{x:cen[0],y:cen[1]-r-4,"text-anchor":"middle",class:"crownlab",fill:col});
-    lt.textContent=ringBy[ring].label; svg.appendChild(lt);
-  });
-
-  // Zones de couronne (grande sous petite) ; Paris intra-muros → encart dédié à droite.
-  [["grande",GC],["petite",PC]].forEach(([ring,zs])=>{
-    if(!state.rings[ring])return; const col=ringBy[ring].color;
-    zs.forEach(z=>{const selc=z.code===state.selected;
-      const p=svgEl("path",{d:ringPath(z.geometry,parisProj),fill:noteColor(z),
-        style:`stroke:${selc?"var(--ink)":col};stroke-width:${selc?2.6:1.4}`});
+  const zones=MAP_ZONES.filter(z=>state.rings[z.ring]);
+  if(zones.length>=3){
+    const sites=zones.map(z=>mapProj(z.lon,z.lat));
+    const bound=expandPoly(convexHull(sites),26);
+    const cells=voronoiCells(sites,bound);
+    const vals=zones.map(z=>noteVille100(z)), br=classBreaks(vals,5);
+    // Contour du territoire (liseré discret)
+    svg.appendChild(svgEl("path",{d:polyPath(bound),fill:"none",stroke:"var(--mapdept)","stroke-width":1.4,opacity:.5}));
+    // Cellules (communes)
+    zones.forEach((z,i)=>{const poly=cells[i]; if(!poly||poly.length<3)return;
+      const selc=z.code===state.selected;
+      const p=svgEl("path",{d:polyPath(poly),fill:WARM[classIndex(noteVille100(z),br)],
+        style:`stroke:${selc?"var(--ink)":"var(--cellstroke)"};stroke-width:${selc?2.4:.8}`});
       p.setAttribute("class","cell"+(selc?" sel":""));
       p.onclick=()=>{state.selected=z.code;renderMap();renderRightPanel();};
       const tt=svgEl("title"); tt.textContent=`${z.nom} · note ${(noteVille100(z)/10).toFixed(1)}/10`; p.appendChild(tt);
-      svg.appendChild(p);});
-    zs.forEach(z=>{const ct=centroid(z.geometry,parisProj);
-      const t=svgEl("text",{x:ct[0],y:ct[1]+2,"text-anchor":"middle",class:"clab sm"});
-      t.textContent=z.nom.split(/[- ]/)[0]; svg.appendChild(t);});
-  });
-  // Repère « Paris » au centre (détail dans l'encart)
-  if(state.rings.paris){
-    svg.appendChild(svgEl("circle",{cx:cen[0],cy:cen[1],r:7,class:"locus",style:`fill:${ringBy.paris.color};fill-opacity:.85`}));
-    const pl=svgEl("text",{x:cen[0],y:cen[1]-11,"text-anchor":"middle",class:"clab"}); pl.textContent="Paris"; svg.appendChild(pl);
+      svg.appendChild(p); z._cell=poly;});
+    // La Seine + Marne (au-dessus des communes)
+    [SEINE,MARNE].forEach(w=>svg.appendChild(svgEl("path",
+      {d:linePath(w.map(([lo,la])=>mapProj(lo,la))),fill:"none",stroke:"var(--seine)",
+       "stroke-width":3.4,"stroke-linejoin":"round","stroke-linecap":"round",opacity:.9})));
+    // Étiquettes de département (grandes, estompées)
+    DEPTS.forEach(d=>{const on=d.zs.filter(z=>state.rings[z.ring]); if(!on.length)return;
+      const c=[avg(on.map(z=>mapProj(z.lon,z.lat)[0])),avg(on.map(z=>mapProj(z.lon,z.lat)[1]))];
+      const t=svgEl("text",{x:c[0],y:c[1],"text-anchor":"middle",class:"deptlab"}); t.textContent=d.nom; svg.appendChild(t);});
+    // Étiquettes de commune
+    zones.forEach((z,i)=>{const poly=cells[i]; if(!poly||poly.length<3)return;
+      const ct=polyCentroid(poly), area=polyArea(poly);
+      const lab=z.ring==="paris"?String(+z.code.slice(3)):z.nom.split(/[- ]/)[0];
+      if(z.ring!=="paris"&&area<160)return;
+      const t=svgEl("text",{x:ct[0],y:ct[1]+3,"text-anchor":"middle",class:z.ring==="paris"?"clab":"clab sm"});
+      t.textContent=lab; svg.appendChild(t);});
+    // Légende classée + échelle
+    drawLegend(svg,br); drawScale(svg);
+  } else {
+    const t=svgEl("text",{x:VW/2,y:VH/2,"text-anchor":"middle",class:"clab"});
+    t.textContent="Activez « Paris » ou « Petite couronne » pour afficher le plan."; svg.appendChild(t);
   }
-
-  // Encart zoom : Paris intra-muros (20 arrondissements lisibles)
-  if(state.rings.paris){
-    const IB=PARIS_INSET;
-    svg.appendChild(svgEl("line",{x1:cen[0],y1:cen[1],x2:IB.x,y2:IB.y+IB.h/2,class:"leader"}));
-    svg.appendChild(svgEl("rect",{x:IB.x,y:IB.y,width:IB.w,height:IB.h,rx:8,class:"inset"}));
-    const it=svgEl("text",{x:IB.x+9,y:IB.y+17,class:"ftitle"}); it.textContent="Paris — 20 arrondissements"; svg.appendChild(it);
-    ARR.forEach(z=>{const selc=z.code===state.selected;
-      const p=svgEl("path",{d:ringPath(z.geometry,parisInsetProj),fill:noteColor(z),
-        style:`stroke:${selc?"var(--ink)":ringBy.paris.color};stroke-width:${selc?2.4:1.1}`});
-      p.setAttribute("class","cell"+(selc?" sel":""));
-      p.onclick=()=>{state.selected=z.code;renderMap();renderRightPanel();};
-      const tt=svgEl("title"); tt.textContent=`${z.nom} · note ${(noteVille100(z)/10).toFixed(1)}/10`; p.appendChild(tt);
-      svg.appendChild(p);});
-    ARR.forEach(z=>{const ct=centroid(z.geometry,parisInsetProj);
-      const t=svgEl("text",{x:ct[0],y:ct[1]+2,"text-anchor":"middle",class:"clab"});
-      t.textContent=String(+z.code.slice(3)); svg.appendChild(t);});
-  }
-
-  const leg=document.querySelector(".legend"); leg.style.display="flex";
-  document.getElementById("legMin").textContent="note 0";
-  document.getElementById("legMax").textContent="100";
-  document.getElementById("legRamp").style.background=`linear-gradient(90deg,${RAMP_DIV.join(",")})`;
 }
-// Bande « hors couronnes » : villes hors Île-de-France (données réelles), non géolocalisées ici.
-function renderHorsBand(){
+function drawLegend(svg,br){
+  const x=14,y=VH-146,w=150,rh=22,n=WARM.length;
+  const g=svgEl("g",{}); svg.appendChild(g);
+  g.appendChild(svgEl("rect",{x:x,y:y,width:w,height:36+n*rh,rx:8,class:"legbox"}));
+  const t1=svgEl("text",{x:x+12,y:y+18,class:"legtitle"}); t1.textContent="Note de ville"; g.appendChild(t1);
+  const t2=svgEl("text",{x:x+12,y:y+30,class:"legsub"}); t2.textContent="(sur 10)"; g.appendChild(t2);
+  for(let i=n-1;i>=0;i--){const yy=y+40+(n-1-i)*rh;
+    g.appendChild(svgEl("rect",{x:x+12,y:yy,width:20,height:rh-5,fill:WARM[i],stroke:"var(--cellstroke)","stroke-width":.6}));
+    const lab= i===0?`< ${(br[0]/10).toFixed(1)}`
+      : i===n-1?`≥ ${(br[n-2]/10).toFixed(1)}`
+      : `${(br[i-1]/10).toFixed(1)} – ${(br[i]/10).toFixed(1)}`;
+    const tl=svgEl("text",{x:x+40,y:yy+rh-9,class:"leglab"}); tl.textContent=lab; g.appendChild(tl);}
+}
+function drawScale(svg){
+  const px2km=(()=>{const a=mapProj(2.4,48.8),b=mapProj(2.4,48.8+2/111);return Math.hypot(a[0]-b[0],a[1]-b[1]);})();
+  const x=184,y=VH-16,L=Math.min(px2km,120);
+  svg.appendChild(svgEl("line",{x1:x,y1:y,x2:x+L,y2:y,stroke:"var(--ink)","stroke-width":2}));
+  svg.appendChild(svgEl("line",{x1:x,y1:y-4,x2:x,y2:y+4,stroke:"var(--ink)","stroke-width":2}));
+  svg.appendChild(svgEl("line",{x1:x+L,y1:y-4,x2:x+L,y2:y+4,stroke:"var(--ink)","stroke-width":2}));
+  const t=svgEl("text",{x:x+L+8,y:y+4,class:"clab sm","text-anchor":"start"}); t.textContent="2 km"; svg.appendChild(t);
+}
+// Bandes de tuiles : grande couronne + villes hors couronnes.
+function renderBands(){
   const el=document.getElementById("horsband"); if(!el)return;
-  if(!state.rings.hors){el.style.display="none"; return;}
-  el.style.display="block";
-  el.innerHTML=`<div class="hb-t"><span class="rdot" style="background:${ringBy.hors.color}"></span>
-      Villes hors couronnes <small>(hors Île-de-France · données réelles)</small></div>
-    <div class="hb-row">`+HORS.map(z=>{
-      const nv=(noteVille100(z)/10).toFixed(1), sel=z.code===state.selected?" sel":"";
-      return `<button class="htile${sel}" data-code="${z.code}"><b>${z.nom}</b><span>${nv}<small>/10</small></span></button>`;
-    }).join("")+`</div>`;
-  el.querySelectorAll(".htile").forEach(b=>b.onclick=()=>{state.selected=b.dataset.code;renderMap();renderHorsBand();renderRightPanel();});
+  const band=(ring,zs,sub)=>{
+    if(!state.rings[ring])return "";
+    return `<div class="hb-t"><span class="rdot" style="background:${ringBy[ring].color}"></span>
+        ${ringBy[ring].label} <small>${sub}</small></div>
+      <div class="hb-row">`+zs.map(z=>{
+        const nv=(noteVille100(z)/10).toFixed(1), sel=z.code===state.selected?" sel":"";
+        return `<button class="htile${sel}" data-code="${z.code}"><b>${z.nom}</b><span>${nv}<small>/10</small></span></button>`;
+      }).join("")+`</div>`;
+  };
+  const html=band("grande",GC,"(77 · 78 · 91 · 95 — Île-de-France)")+band("hors",HORS,"(hors Île-de-France · données réelles)");
+  el.style.display=html?"block":"none"; el.innerHTML=html;
+  el.querySelectorAll(".htile").forEach(b=>b.onclick=()=>{state.selected=b.dataset.code;renderMap();renderBands();renderRightPanel();});
 }
 function fmtV(v,unit){return (Math.round(v*10)/10).toLocaleString("fr-FR")+(unit?(" "+unit):"");}
 
@@ -896,7 +953,7 @@ document.getElementById("themeBtn").onclick=()=>{
 try{const s=localStorage.getItem("demo-theme"); if(s) root.setAttribute("data-theme",s);}catch(e){}
 
 /* ---------- Init ---------- */
-renderLayerChips(); renderMap(); renderHorsBand(); renderRightPanel();
+renderLayerChips(); renderMap(); renderBands(); renderRightPanel();
 renderSliders(); renderRank();
 renderCmpChips(); renderCmp();
 renderAlerts();
