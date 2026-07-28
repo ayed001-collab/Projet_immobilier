@@ -12,6 +12,11 @@ formation = éditer ce JSON, **sans toucher au code**.
 > — lien partageable aux utilisateurs, publié automatiquement sur GitHub Pages.
 > Hébergement statique : l'espace admin y fonctionne en **mode local** (les vidéos par URL / YouTube
 > se lisent ; l'upload de fichier persistant nécessite le backend, cf. plus bas).
+>
+> **Version autonome (single-file)** : l'application supporte un *mode embarqué* — si les globals
+> `window.FC_EMBEDDED` / `window.FC_EMBEDDED_CURRICULUM` sont définis, le référentiel est lu depuis
+> la page (aucun `fetch`), ce qui permet d'empaqueter tout le POC dans un unique fichier HTML
+> hors-ligne (utile pour un envoi direct ou un hébergement sans serveur).
 
 ---
 

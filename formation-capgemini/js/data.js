@@ -13,9 +13,14 @@ FC.data = (function () {
   /** Charge le référentiel une seule fois et construit les index. */
   async function load() {
     if (_curriculum) return _curriculum;
-    const res = await fetch("data/curriculum.json", { cache: "no-cache" });
-    if (!res.ok) throw new Error("Impossible de charger le référentiel (HTTP " + res.status + ").");
-    _curriculum = await res.json();
+    // Mode embarqué (build single-file / hors-ligne) : référentiel injecté en global.
+    if (typeof window !== "undefined" && window.FC_EMBEDDED_CURRICULUM) {
+      _curriculum = window.FC_EMBEDDED_CURRICULUM;
+    } else {
+      const res = await fetch("data/curriculum.json", { cache: "no-cache" });
+      if (!res.ok) throw new Error("Impossible de charger le référentiel (HTTP " + res.status + ").");
+      _curriculum = await res.json();
+    }
 
     _curriculum.domaines.forEach((d) => {
       _domaineById[d.id] = d;
@@ -90,6 +95,10 @@ FC.data = (function () {
 
   /** Détecte le mode et initialise le cache des surcharges. */
   async function loadVideoConfig() {
+    // Mode embarqué : pas de backend, surcharges en localStorage uniquement.
+    if (typeof window !== "undefined" && window.FC_EMBEDDED) {
+      _apiAvailable = false; _authRequired = false; _overrides = readLocal(); return;
+    }
     try {
       const res = await fetch(API_BASE + "/videos", { cache: "no-cache" });
       if (res.ok) {
