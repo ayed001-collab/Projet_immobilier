@@ -367,6 +367,14 @@ pre.mermaid {
 .admin-toast { margin-top: 12px; font-size: 13px; color: #1c7a45; background: #e9f7ee; border-radius: var(--radius-sm); padding: 8px 12px; display: none; }
 .admin-toast.show { display: block; }
 .admin-toast--err { color: var(--cap-accent); background: #ffe7ec; }
+.admin-toolbar__spacer { flex: 1; }
+
+/* Écran de connexion admin */
+.login-card { max-width: 420px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: var(--cap-navy); margin-bottom: 12px; }
+.login-field input { font: inherit; font-weight: 400; padding: 11px 13px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fbfcfe; }
+.login-field input:focus { outline: 2px solid var(--cap-cyan); border-color: var(--cap-cyan); }
+.login-error { color: var(--cap-accent); font-size: 13px; min-height: 18px; margin-bottom: 8px; }
 
 /* ---------------------------------------------------------------- Responsive */
 @media (max-width: 860px) {

@@ -13,9 +13,16 @@ window.FC = window.FC || {};
 FC.admin = (function () {
   const E = (s) => FC.ui.esc(s);
   const fond = () => FC.data.themes().filter((t) => t.niveau === "conceptuel");
+  let _view = null; // conteneur principal, pour re-rendre après (dé)connexion
 
   function render(container) {
+    _view = container;
     const connected = FC.data.isConnected();
+
+    // Mode connecté avec authentification exigée : écran de connexion préalable.
+    if (connected && FC.data.authRequired() && !FC.data.isAuthed()) {
+      return renderLogin(container);
+    }
     const note = connected
       ? `<div class="admin-note admin-note--ok">
            <strong>Mode connecté (backend actif).</strong>
@@ -50,6 +57,7 @@ FC.admin = (function () {
         <div class="admin-toolbar">
           ${connected ? "" : `<button class="btn btn--primary" id="export">⬇︎ Exporter la configuration (JSON)</button>`}
           <button class="btn" id="reset">↺ Réinitialiser (tout retirer)</button>
+          ${connected && FC.data.isAuthed() ? `<span class="admin-toolbar__spacer"></span><button class="btn btn--ghost" id="logout">Se déconnecter</button>` : ""}
         </div>
 
         <div id="admin-list"></div>
@@ -61,6 +69,8 @@ FC.admin = (function () {
     container.querySelector("#back").addEventListener("click", () => { location.hash = "#/fondamentaux"; });
     const exp = container.querySelector("#export");
     if (exp) exp.addEventListener("click", exportConfig);
+    const logoutBtn = container.querySelector("#logout");
+    if (logoutBtn) logoutBtn.addEventListener("click", () => { FC.data.logout(); render(container); });
     container.querySelector("#reset").addEventListener("click", async () => {
       if (!confirm("Retirer toutes les vidéos configurées ?")) return;
       const ids = Object.keys(FC.data.getOverrides());
@@ -68,6 +78,51 @@ FC.admin = (function () {
       renderList(container.querySelector("#admin-list"));
     });
   }
+
+  /** Écran de connexion (mode connecté). Le vrai contrôle est côté serveur. */
+  function renderLogin(container) {
+    container.innerHTML = `
+      <main class="container fiche">
+        <nav class="breadcrumb"><a href="#/fondamentaux">Catalogue</a><span class="sep">›</span><span class="current">Espace admin</span></nav>
+        <header class="fiche__header">
+          <div class="badges"><span class="badge badge--pilote">Admin</span> <span class="admin-status admin-status--on">● Connecté</span></div>
+          <h1>🔒 Connexion administrateur</h1>
+          <div class="meta"><span>La gestion des vidéos est réservée aux administrateurs.</span></div>
+        </header>
+        <section class="section login-card">
+          <form id="login-form" autocomplete="on">
+            <label class="login-field">Mot de passe administrateur
+              <input type="password" id="pw" autocomplete="current-password" required placeholder="••••••••" />
+            </label>
+            <div class="login-error" id="login-error"></div>
+            <button class="btn btn--primary" type="submit" id="login-btn">Se connecter</button>
+          </form>
+          <p class="schema-note" style="margin-top:14px">Le mot de passe est défini par la variable d'environnement
+            <code>FORMATION_ADMIN_PASSWORD</code> côté serveur (ou généré et affiché dans la console au démarrage).</p>
+          <span class="fiche__back" id="back">← Retour au catalogue</span>
+        </section>
+      </main>`;
+
+    container.querySelector("#back").addEventListener("click", () => { location.hash = "#/fondamentaux"; });
+    const form = container.querySelector("#login-form");
+    const errEl = container.querySelector("#login-error");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = container.querySelector("#login-btn");
+      errEl.textContent = "";
+      try {
+        setBusy(btn, true);
+        await FC.data.login(container.querySelector("#pw").value);
+        render(container); // authentifié -> vue de gestion
+      } catch (err) {
+        errEl.textContent = err.message || "Connexion refusée.";
+        setBusy(btn, false);
+      }
+    });
+  }
+
+  /** Recharge l'écran approprié après expiration de session (401). */
+  function relogin() { if (_view) render(_view); }
 
   function renderList(el) {
     const themes = fond();
@@ -149,6 +204,7 @@ FC.admin = (function () {
         }
         renderList(el);
       } catch (err) {
+        if (err.auth) { relogin(); return; }
         toast(card, err.message || "Erreur lors de l'enregistrement.", true);
       } finally {
         setBusy(btn, false);
@@ -162,7 +218,7 @@ FC.admin = (function () {
 
     card.querySelector('[data-a="remove"]').addEventListener("click", async () => {
       try { await FC.data.removeVideo(t.id); renderList(el); }
-      catch (err) { toast(card, err.message || "Erreur.", true); }
+      catch (err) { if (err.auth) { relogin(); return; } toast(card, err.message || "Erreur.", true); }
     });
   }
 

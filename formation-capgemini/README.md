@@ -165,12 +165,45 @@ les fichiers uploadés sont stockés dans `assets/videos/` et la configuration d
 
 **API exposée** (préfixe `/api`) :
 
-| Méthode | Route | Rôle |
-|---|---|---|
-| `GET` | `/api/videos` | Configuration des vidéos (surcharges) |
-| `PUT` | `/api/videos/{themeId}` | Associer une vidéo par URL (YouTube / Vimeo / .mp4) |
-| `POST` | `/api/videos/{themeId}/upload` | Uploader un fichier vidéo (multipart) |
-| `DELETE` | `/api/videos/{themeId}` | Retirer la vidéo (et supprimer le fichier uploadé) |
+| Méthode | Route | Auth | Rôle |
+|---|---|:--:|---|
+| `GET` | `/api/health` | — | État du service |
+| `POST` | `/api/login` | — | Échange mot de passe → jeton de session |
+| `GET` | `/api/videos` | — | Configuration des vidéos (lecture, publique) |
+| `PUT` | `/api/videos/{themeId}` | 🔒 | Associer une vidéo par URL (YouTube / Vimeo / .mp4) |
+| `POST` | `/api/videos/{themeId}/upload` | 🔒 | Uploader un fichier vidéo (multipart) |
+| `DELETE` | `/api/videos/{themeId}` | 🔒 | Retirer la vidéo (et supprimer le fichier uploadé) |
+
+### Authentification de l'espace admin 🔒
+
+Seules les routes d'**écriture** (upload, association, suppression) sont protégées ; la
+**consultation reste publique**. Le contrôle réel est **côté serveur** : l'écran de connexion du
+front n'est qu'une commodité (le SPA est public par nature, la sécurité est portée par l'API).
+
+- **Mot de passe** : variable d'environnement `FORMATION_ADMIN_PASSWORD`. Si elle n'est pas
+  définie, un mot de passe **aléatoire est généré et affiché dans la console** au démarrage (motif
+  « token Jupyter » : sécurisé par défaut, zéro configuration pour essayer).
+- **Jetons** : `/api/login` renvoie un **jeton signé HMAC-SHA256** à expiration (8 h par défaut,
+  `FORMATION_TOKEN_TTL`). Le front le stocke en `sessionStorage` et l'envoie en `Authorization:
+  Bearer …` sur les écritures. Un `401` renvoie automatiquement l'utilisateur à l'écran de connexion.
+- **Secret de signature** : `FORMATION_SECRET` (à fixer pour que les sessions survivent aux
+  redémarrages et soient valides entre plusieurs workers ; sinon généré aléatoirement par processus).
+
+```bash
+# Lancer avec un mot de passe et un secret fixés
+export FORMATION_ADMIN_PASSWORD="votre-mot-de-passe"
+export FORMATION_SECRET="une-chaine-longue-et-aleatoire"
+uvicorn server.app:app --port 8000
+
+# Exemple d'appel authentifié
+TOKEN=$(curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"password":"votre-mot-de-passe"}' http://localhost:8000/api/login | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+curl -H "Authorization: Bearer $TOKEN" -F "file=@formation.mp4" -F "titre=…" \
+  http://localhost:8000/api/videos/principes-assurance-vie/upload
+```
+
+> Pistes de durcissement pour une mise en production : HTTPS (terminaison TLS en amont), comptes
+> multiples / rôles, journalisation des accès, et hachage du mot de passe (bcrypt) si stocké.
 
 > **Évolution vers un stockage objet (S3…)** : seules les fonctions de stockage de
 > [`server/app.py`](server/app.py) (`save_config`, écriture dans `VIDEO_DIR`) sont à remplacer par

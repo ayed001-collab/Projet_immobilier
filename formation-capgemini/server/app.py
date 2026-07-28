@@ -23,13 +23,18 @@ par un backend objet type S3 sans toucher au front.
 """
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
+import os
 import re
-import shutil
+import secrets
 import threading
+import time
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -48,6 +53,64 @@ MAX_UPLOAD_BYTES = 500 * 1024 * 1024                  # garde-fou : 500 Mo / fic
 ALLOWED_EXT = {".mp4", ".webm", ".ogg", ".mov", ".m4v"}
 
 _lock = threading.Lock()
+
+# --- Authentification --------------------------------------------------------
+# Seules les routes d'ÉCRITURE (upload, association, suppression) sont protégées.
+# La consultation (front, vidéos, fichiers servis) reste publique.
+#
+# Configuration par variables d'environnement (recommandé en production) :
+#   FORMATION_ADMIN_PASSWORD  mot de passe de l'espace admin
+#   FORMATION_SECRET          secret de signature des jetons (partagé entre workers)
+# À défaut, des valeurs aléatoires sont générées au démarrage et affichées.
+TOKEN_TTL = int(os.environ.get("FORMATION_TOKEN_TTL", 8 * 3600))  # 8 h par défaut
+
+ADMIN_PASSWORD = os.environ.get("FORMATION_ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    ADMIN_PASSWORD = secrets.token_urlsafe(9)
+    print("\n" + "=" * 66)
+    print("  ESPACE ADMIN — mot de passe généré (aucun FORMATION_ADMIN_PASSWORD) :")
+    print("      " + ADMIN_PASSWORD)
+    print("  Définissez FORMATION_ADMIN_PASSWORD pour fixer votre propre mot de passe.")
+    print("=" * 66 + "\n")
+
+_secret_env = os.environ.get("FORMATION_SECRET")
+SECRET = (_secret_env or secrets.token_urlsafe(32)).encode("utf-8")
+if not _secret_env:
+    print("  (FORMATION_SECRET non défini : les sessions admin seront invalidées "
+          "à chaque redémarrage du serveur.)\n")
+
+
+def _b64e(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _b64d(txt: str) -> bytes:
+    return base64.urlsafe_b64decode(txt + "=" * (-len(txt) % 4))
+
+
+def make_token(ttl: int = TOKEN_TTL) -> str:
+    """Jeton auto-porté : payload base64 + signature HMAC-SHA256."""
+    body = _b64e(json.dumps({"exp": int(time.time()) + ttl}).encode("utf-8"))
+    sig = _b64e(hmac.new(SECRET, body.encode("ascii"), hashlib.sha256).digest())
+    return f"{body}.{sig}"
+
+
+def verify_token(token: str) -> bool:
+    try:
+        body, sig = token.split(".", 1)
+        expected = _b64e(hmac.new(SECRET, body.encode("ascii"), hashlib.sha256).digest())
+        if not hmac.compare_digest(sig, expected):
+            return False
+        return json.loads(_b64d(body)).get("exp", 0) >= int(time.time())
+    except (ValueError, KeyError, json.JSONDecodeError):
+        return False
+
+
+def require_auth(authorization: str = Header(default="")) -> None:
+    """Dépendance FastAPI : exige un jeton Bearer valide sur les écritures."""
+    token = authorization[7:].strip() if authorization[:7].lower() == "bearer " else ""
+    if not verify_token(token):
+        raise HTTPException(status_code=401, detail="Authentification requise.")
 
 # --- Persistance de la configuration ----------------------------------------
 def load_config() -> dict:
@@ -84,16 +147,25 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "mode": "connected"}
+    return {"status": "ok", "mode": "connected", "authRequired": True}
+
+
+@app.post("/api/login")
+def login(payload: dict):
+    """Échange un mot de passe contre un jeton de session signé."""
+    password = (payload or {}).get("password", "")
+    if not hmac.compare_digest(str(password), ADMIN_PASSWORD):
+        raise HTTPException(status_code=401, detail="Mot de passe incorrect.")
+    return {"token": make_token(), "expiresIn": TOKEN_TTL}
 
 
 @app.get("/api/videos")
 def list_videos():
-    """Retourne la configuration des vidéos (surcharges serveur)."""
-    return {"videos": load_config()}
+    """Retourne la configuration des vidéos (surcharges serveur). Public (lecture)."""
+    return {"videos": load_config(), "authRequired": True}
 
 
-@app.put("/api/videos/{theme_id}")
+@app.put("/api/videos/{theme_id}", dependencies=[Depends(require_auth)])
 def set_video(theme_id: str, payload: dict):
     """Associe une vidéo par URL (YouTube / Vimeo / lien direct)."""
     src = (payload or {}).get("src", "").strip()
@@ -112,7 +184,7 @@ def set_video(theme_id: str, payload: dict):
     return cfg_entry
 
 
-@app.post("/api/videos/{theme_id}/upload")
+@app.post("/api/videos/{theme_id}/upload", dependencies=[Depends(require_auth)])
 async def upload_video(
     theme_id: str,
     file: UploadFile = File(...),
@@ -159,7 +231,7 @@ async def upload_video(
     return cfg_entry
 
 
-@app.delete("/api/videos/{theme_id}")
+@app.delete("/api/videos/{theme_id}", dependencies=[Depends(require_auth)])
 def delete_video(theme_id: str):
     """Retire la vidéo d'un thème (et supprime le fichier s'il a été uploadé)."""
     with _lock:

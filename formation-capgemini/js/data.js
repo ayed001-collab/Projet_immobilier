@@ -77,8 +77,10 @@ FC.data = (function () {
      --------------------------------------------------------------------- */
   const API_BASE = "api";
   const LS_KEY = "fc.videos.overrides";
+  const TOKEN_KEY = "fc.admin.token";
   const _sessionBlobs = {};   // themeId -> objectURL (fichiers uploadés, mode local)
   let _apiAvailable = false;   // le backend répond-il ?
+  let _authRequired = false;   // le backend exige-t-il une authentification pour écrire ?
   let _overrides = {};         // cache des surcharges (serveur ou localStorage)
 
   const readLocal = () => {
@@ -91,12 +93,15 @@ FC.data = (function () {
     try {
       const res = await fetch(API_BASE + "/videos", { cache: "no-cache" });
       if (res.ok) {
+        const data = await res.json();
         _apiAvailable = true;
-        _overrides = (await res.json()).videos || {};
+        _authRequired = !!data.authRequired;
+        _overrides = data.videos || {};
         return;
       }
     } catch (e) { /* backend absent -> repli */ }
     _apiAvailable = false;
+    _authRequired = false;
     _overrides = readLocal();
   }
 
@@ -105,13 +110,41 @@ FC.data = (function () {
   function setSessionBlob(themeId, objectUrl) { _sessionBlobs[themeId] = objectUrl; }
   function sessionBlob(themeId) { return _sessionBlobs[themeId] || null; }
 
+  /* ---- Authentification admin (mode connecté) ---------------------------- */
+  const authRequired = () => _authRequired;
+  function getToken() { try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
+  const isAuthed = () => !!getToken();
+  function logout() { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+  function authHeaders() { const t = getToken(); return t ? { Authorization: "Bearer " + t } : {}; }
+
+  /** Échange un mot de passe contre un jeton de session. */
+  async function login(password) {
+    const res = await fetch(API_BASE + "/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) throw await httpError(res, "Échec de la connexion");
+    const data = await res.json();
+    try { sessionStorage.setItem(TOKEN_KEY, data.token); } catch (e) {}
+    return true;
+  }
+
+  /** Construit une erreur ; sur 401, purge le jeton et marque err.auth. */
+  async function httpError(res, fallback) {
+    const err = new Error(await errText(res, fallback));
+    if (res.status === 401) { logout(); err.auth = true; }
+    return err;
+  }
+
   /** Enregistre une vidéo par URL (YouTube / Vimeo / lien direct). */
   async function setVideoUrl(themeId, cfg) {
     if (_apiAvailable) {
       const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), {
-        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg),
+        method: "PUT",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(cfg),
       });
-      if (!res.ok) throw new Error(await errText(res, "Échec de l'enregistrement"));
+      if (!res.ok) throw await httpError(res, "Échec de l'enregistrement");
       _overrides[themeId] = await res.json();
     } else {
       _overrides[themeId] = { type: cfg.type, src: cfg.src, titre: cfg.titre, duree: cfg.duree };
@@ -127,9 +160,9 @@ FC.data = (function () {
       fd.append("titre", (meta && meta.titre) || "");
       fd.append("duree", (meta && meta.duree) || "");
       const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId) + "/upload", {
-        method: "POST", body: fd,
+        method: "POST", headers: authHeaders(), body: fd,
       });
-      if (!res.ok) throw new Error(await errText(res, "Échec de l'upload"));
+      if (!res.ok) throw await httpError(res, "Échec de l'upload");
       _overrides[themeId] = await res.json();
       delete _sessionBlobs[themeId]; // le serveur sert désormais le fichier
     } else {
@@ -145,7 +178,10 @@ FC.data = (function () {
   /** Retire la vidéo d'un thème. */
   async function removeVideo(themeId) {
     if (_apiAvailable) {
-      await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), { method: "DELETE" });
+      const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!res.ok) throw await httpError(res, "Échec de la suppression");
     }
     delete _overrides[themeId];
     delete _sessionBlobs[themeId];
@@ -225,5 +261,6 @@ FC.data = (function () {
     parcours, parcoursById, parcoursOfTheme,
     getVideo, formats, hasPage,
     isConnected, getOverrides, setVideoUrl, uploadVideoFile, removeVideo,
+    authRequired, isAuthed, login, logout,
   };
 })();
