@@ -8,6 +8,11 @@ Le référentiel de contenus (domaines, thèmes, fiches) est **totalement décou
 dans un unique fichier de données [`data/curriculum.json`](data/curriculum.json). Enrichir la
 formation = éditer ce JSON, **sans toucher au code**.
 
+> 🔗 **Démo en ligne (POC)** : https://ayed001-collab.github.io/Projet_immobilier/
+> — lien partageable aux utilisateurs, publié automatiquement sur GitHub Pages.
+> Hébergement statique : l'espace admin y fonctionne en **mode local** (les vidéos par URL / YouTube
+> se lisent ; l'upload de fichier persistant nécessite le backend, cf. plus bas).
+
 ---
 
 ## Sommaire
