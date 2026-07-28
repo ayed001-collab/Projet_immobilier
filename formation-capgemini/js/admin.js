@@ -1,42 +1,55 @@
 /* =========================================================================
    admin.js — Espace admin : gestion des vidéos des thèmes "Fondamentaux".
-   Contexte : application statique (sans backend). La configuration des vidéos
-   est persistée dans le navigateur (localStorage) et vient surcharger le
-   référentiel. Deux modes d'ajout :
-     1) URL hébergée (YouTube, Vimeo, ou lien direct .mp4) — utilisable de suite.
-     2) Upload d'un fichier local — lu via la File API et jouable pendant la
-        session ; pour une mise en ligne permanente, déposer le fichier dans
-        assets/videos/ puis exporter la configuration vers curriculum.json.
+
+   Deux modes, détectés automatiquement (voir data.js) :
+     • MODE CONNECTÉ (backend lancé) : upload et configuration persistés sur
+       le serveur (assets/videos/ + storage/videos.json), partagés entre tous
+       les utilisateurs.
+     • MODE LOCAL (repli) : configuration en localStorage, fichier jouable le
+       temps de la session, export JSON pour report manuel dans curriculum.json.
    ========================================================================= */
 window.FC = window.FC || {};
 
 FC.admin = (function () {
   const E = (s) => FC.ui.esc(s);
+  const fond = () => FC.data.themes().filter((t) => t.niveau === "conceptuel");
 
   function render(container) {
-    const fondamentaux = FC.data.themes().filter((t) => t.niveau === "conceptuel");
+    const connected = FC.data.isConnected();
+    const note = connected
+      ? `<div class="admin-note admin-note--ok">
+           <strong>Mode connecté (backend actif).</strong>
+           Les vidéos ajoutées ici sont <em>uploadées et stockées sur le serveur</em>
+           (<code>assets/videos/</code>) et <em>visibles par tous les utilisateurs</em>.
+           La persistance est réelle : aucune étape manuelle n'est nécessaire.
+         </div>`
+      : `<div class="admin-note">
+           <strong>Mode local (sans backend).</strong>
+           Les vidéos configurées ici sont enregistrées dans <em>ce navigateur</em>.
+           Un fichier uploadé est lisible pendant la session. Pour une diffusion permanente,
+           lancez le backend (<code>server/app.py</code>) ou déposez le fichier dans
+           <code>assets/videos/</code> puis exportez la configuration.
+         </div>`;
+
+    const modeBadge = connected
+      ? `<span class="admin-status admin-status--on">● Connecté</span>`
+      : `<span class="admin-status admin-status--off">○ Local</span>`;
 
     container.innerHTML = `
       <main class="container fiche">
         <nav class="breadcrumb"><a href="#/fondamentaux">Catalogue</a><span class="sep">›</span><span class="current">Espace admin — Vidéos</span></nav>
 
         <header class="fiche__header">
-          <div class="badges"><span class="badge badge--pilote">Admin</span></div>
+          <div class="badges"><span class="badge badge--pilote">Admin</span> ${modeBadge}</div>
           <h1>🎬 Gestion des vidéos de formation</h1>
           <div class="meta"><span>Associez une vidéo aux thèmes du parcours « Les fondamentaux de l'assurance ».</span></div>
         </header>
 
-        <div class="admin-note">
-          <strong>Application statique (sans serveur).</strong>
-          Les vidéos configurées ici sont enregistrées dans <em>ce navigateur</em> et prennent effet immédiatement.
-          Un fichier <em>uploadé</em> depuis votre poste est lisible pendant la session. Pour une diffusion permanente et
-          partagée, déposez le fichier dans <code>assets/videos/</code> puis reportez la configuration dans
-          <code>data/curriculum.json</code> (bouton <em>Exporter</em> ci-dessous).
-        </div>
+        ${note}
 
         <div class="admin-toolbar">
-          <button class="btn btn--primary" id="export">⬇︎ Exporter la configuration (JSON)</button>
-          <button class="btn" id="reset">↺ Réinitialiser (vider les surcharges locales)</button>
+          ${connected ? "" : `<button class="btn btn--primary" id="export">⬇︎ Exporter la configuration (JSON)</button>`}
+          <button class="btn" id="reset">↺ Réinitialiser (tout retirer)</button>
         </div>
 
         <div id="admin-list"></div>
@@ -44,34 +57,38 @@ FC.admin = (function () {
         <span class="fiche__back" id="back">← Retour au catalogue</span>
       </main>`;
 
-    renderList(container.querySelector("#admin-list"), fondamentaux);
-
+    renderList(container.querySelector("#admin-list"));
     container.querySelector("#back").addEventListener("click", () => { location.hash = "#/fondamentaux"; });
-    container.querySelector("#export").addEventListener("click", exportConfig);
-    container.querySelector("#reset").addEventListener("click", () => {
-      if (confirm("Vider toutes les vidéos configurées dans ce navigateur ?")) {
-        Object.keys(FC.data.getOverrides()).forEach((id) => FC.data.saveOverride(id, null));
-        renderList(container.querySelector("#admin-list"), fondamentaux);
-      }
+    const exp = container.querySelector("#export");
+    if (exp) exp.addEventListener("click", exportConfig);
+    container.querySelector("#reset").addEventListener("click", async () => {
+      if (!confirm("Retirer toutes les vidéos configurées ?")) return;
+      const ids = Object.keys(FC.data.getOverrides());
+      for (const id of ids) { try { await FC.data.removeVideo(id); } catch (e) {} }
+      renderList(container.querySelector("#admin-list"));
     });
   }
 
-  function renderList(el, themes) {
+  function renderList(el) {
+    const themes = fond();
     el.innerHTML = themes.map(row).join("");
     themes.forEach((t) => wireRow(el, t));
   }
 
   function row(t) {
     const v = FC.data.getVideo(t);
+    const isFile = v && v.type === "fichier";
     const status = v
-      ? `<span class="admin-status admin-status--on">Vidéo configurée${v.type ? ` · ${E(labelType(v))}` : ""}</span>`
+      ? `<span class="admin-status admin-status--on">Vidéo configurée · ${E(labelType(v))}</span>`
       : `<span class="admin-status admin-status--off">Aucune vidéo</span>`;
+    const currentSrc = v ? `<div class="card__crumb" style="margin-top:4px">Source : ${E(v.src)}</div>` : "";
     return `
       <section class="admin-card" data-id="${E(t.id)}">
         <div class="admin-card__head">
           <div>
             <h3>${E(t.titre)}</h3>
             <div class="card__crumb">${E((FC.data.domaineById(t.domaine) || {}).nom || "")}</div>
+            ${currentSrc}
           </div>
           ${status}
         </div>
@@ -87,10 +104,10 @@ FC.admin = (function () {
 
         <div class="admin-source">
           <label class="admin-source__url">Lien vidéo (YouTube, Vimeo ou .mp4)
-            <input type="url" data-f="src" value="${E(v && !isBlob(v) && v.src || "")}" placeholder="https://…" />
+            <input type="url" data-f="src" value="${E(v && !isFile && v.src || "")}" placeholder="https://…" />
           </label>
           <div class="admin-source__sep">ou</div>
-          <label class="admin-source__file">Fichier vidéo (local)
+          <label class="admin-source__file">Fichier vidéo (.mp4, .webm…)
             <input type="file" data-f="file" accept="video/*" />
           </label>
         </div>
@@ -108,31 +125,34 @@ FC.admin = (function () {
     if (!card) return;
     const get = (f) => card.querySelector(`[data-f="${f}"]`);
 
-    card.querySelector('[data-a="save"]').addEventListener("click", () => {
+    card.querySelector('[data-a="save"]').addEventListener("click", async () => {
       const titre = get("titre").value.trim();
       const duree = get("duree").value.trim();
       const url = get("src").value.trim();
       const fileInput = get("file");
       const file = fileInput.files && fileInput.files[0];
+      const btn = card.querySelector('[data-a="save"]');
 
-      if (file) {
-        // Lecture locale via File API : jouable cette session (blob).
-        const blobUrl = URL.createObjectURL(file);
-        FC.data.setSessionBlob(t.id, blobUrl);
-        FC.data.saveOverride(t.id, {
-          type: "fichier",
-          src: "assets/videos/" + file.name, // chemin cible pour une diffusion permanente
-          titre, duree, pendingUpload: true,
-        });
-        toast(card, "Fichier chargé pour cette session. Déposez-le dans assets/videos/ puis exportez la configuration.");
-      } else if (url) {
-        FC.data.saveOverride(t.id, { type: detectType(url), src: url, titre, duree });
-        toast(card, "Vidéo enregistrée.");
-      } else {
-        toast(card, "Renseignez un lien vidéo ou sélectionnez un fichier.", true);
-        return;
+      try {
+        setBusy(btn, true);
+        if (file) {
+          await FC.data.uploadVideoFile(t.id, file, { titre, duree });
+          toast(card, FC.data.isConnected()
+            ? "Vidéo uploadée et enregistrée sur le serveur."
+            : "Fichier chargé pour cette session (mode local).");
+        } else if (url) {
+          await FC.data.setVideoUrl(t.id, { type: detectType(url), src: url, titre, duree });
+          toast(card, "Vidéo enregistrée.");
+        } else {
+          toast(card, "Renseignez un lien vidéo ou sélectionnez un fichier.", true);
+          return;
+        }
+        renderList(el);
+      } catch (err) {
+        toast(card, err.message || "Erreur lors de l'enregistrement.", true);
+      } finally {
+        setBusy(btn, false);
       }
-      renderList(el, FC.data.themes().filter((x) => x.niveau === "conceptuel"));
     });
 
     card.querySelector('[data-a="preview"]').addEventListener("click", () => {
@@ -140,16 +160,15 @@ FC.admin = (function () {
       location.hash = "#/video/" + t.id;
     });
 
-    card.querySelector('[data-a="remove"]').addEventListener("click", () => {
-      FC.data.saveOverride(t.id, null);
-      renderList(el, FC.data.themes().filter((x) => x.niveau === "conceptuel"));
+    card.querySelector('[data-a="remove"]').addEventListener("click", async () => {
+      try { await FC.data.removeVideo(t.id); renderList(el); }
+      catch (err) { toast(card, err.message || "Erreur.", true); }
     });
   }
 
-  /** Exporte les surcharges au format prêt à coller dans curriculum.json. */
+  /** Export (mode local) : configuration prête à coller dans curriculum.json. */
   function exportConfig() {
     const ov = FC.data.getOverrides();
-    // Nettoyage : on n'exporte que les champs pérennes.
     const out = {};
     Object.keys(ov).forEach((id) => {
       const v = ov[id];
@@ -170,7 +189,6 @@ FC.admin = (function () {
   }
 
   /* --------------------------------------------------------------- utils */
-  const isBlob = (v) => v && v.pendingUpload;
   function detectType(url) {
     if (/youtu\.?be/.test(url)) return "youtube";
     if (/vimeo\.com/.test(url)) return "vimeo";
@@ -181,6 +199,12 @@ FC.admin = (function () {
     return { youtube: "YouTube", vimeo: "Vimeo", url: "lien direct", fichier: "fichier" }[v.type] || v.type;
   }
   function cssEscape(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&"); }
+  function setBusy(btn, busy) {
+    if (!btn) return;
+    btn.disabled = busy;
+    if (busy) { btn.dataset._t = btn.textContent; btn.textContent = "…"; }
+    else if (btn.dataset._t) { btn.textContent = btn.dataset._t; }
+  }
   function toast(card, msg, isError) {
     let t = card.querySelector(".admin-toast");
     if (!t) { t = document.createElement("div"); t.className = "admin-toast"; card.appendChild(t); }

@@ -334,6 +334,8 @@ pre.mermaid {
   border-radius: var(--radius-sm); padding: 14px 16px; font-size: 14px; color: #6b5300; margin-bottom: 18px;
 }
 .admin-note code { background: #fff2cc; padding: 1px 5px; border-radius: 4px; }
+.admin-note--ok { background: #e9f7ee; border-color: #a9dcbd; border-left-color: #1c7a45; color: #145c33; }
+.admin-note--ok code { background: #d3f0de; }
 .admin-toolbar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
 .btn {
   border: 1px solid var(--line); background: #fff; color: var(--ink);

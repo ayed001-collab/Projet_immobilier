@@ -1,0 +1,198 @@
+"""
+Backend d'upload persistant — Plate-forme de formation Capgemini.
+
+Rôle :
+  • servir le front statique (index.html, css, js, data, assets) ;
+  • exposer une API de gestion des vidéos de formation ;
+  • stocker durablement les fichiers uploadés dans assets/videos/ et la
+    configuration (thème -> vidéo) dans server/storage/videos.json.
+
+Ce backend est OPTIONNEL : le front fonctionne aussi en pur statique (repli
+localStorage). Lorsqu'il est lancé, le front bascule automatiquement en
+« mode connecté » : les vidéos uploadées sont persistées et partagées entre
+tous les utilisateurs du serveur.
+
+Lancement :
+    cd formation-capgemini
+    pip install -r server/requirements.txt
+    uvicorn server.app:app --reload --port 8000
+    # puis http://localhost:8000
+
+Point d'évolution : remplacer les fonctions de stockage (save_upload / config)
+par un backend objet type S3 sans toucher au front.
+"""
+from __future__ import annotations
+
+import json
+import re
+import shutil
+import threading
+from pathlib import Path
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+# --- Chemins -----------------------------------------------------------------
+SERVER_DIR = Path(__file__).resolve().parent
+FRONTEND_ROOT = SERVER_DIR.parent                     # dossier formation-capgemini/
+VIDEO_DIR = FRONTEND_ROOT / "assets" / "videos"       # fichiers servis à assets/videos/<f>
+STORAGE_DIR = SERVER_DIR / "storage"
+CONFIG_FILE = STORAGE_DIR / "videos.json"             # mapping persistant thème -> vidéo
+
+VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+MAX_UPLOAD_BYTES = 500 * 1024 * 1024                  # garde-fou : 500 Mo / fichier
+ALLOWED_EXT = {".mp4", ".webm", ".ogg", ".mov", ".m4v"}
+
+_lock = threading.Lock()
+
+# --- Persistance de la configuration ----------------------------------------
+def load_config() -> dict:
+    if CONFIG_FILE.exists():
+        try:
+            return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return {}
+    return {}
+
+
+def save_config(cfg: dict) -> None:
+    tmp = CONFIG_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(CONFIG_FILE)  # écriture atomique
+
+
+def safe_name(theme_id: str, original: str) -> str:
+    """Nom de fichier sûr, préfixé par le thème pour éviter les collisions."""
+    base = re.sub(r"[^A-Za-z0-9._-]", "_", Path(original).name).strip("._") or "video"
+    tid = re.sub(r"[^A-Za-z0-9._-]", "_", theme_id)
+    return f"{tid}__{base}"
+
+
+# --- API ---------------------------------------------------------------------
+app = FastAPI(title="Formation Capgemini — API vidéos", version="1.0.0")
+
+# CORS permissif : permet de servir le front sur un autre port en développement.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+)
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "mode": "connected"}
+
+
+@app.get("/api/videos")
+def list_videos():
+    """Retourne la configuration des vidéos (surcharges serveur)."""
+    return {"videos": load_config()}
+
+
+@app.put("/api/videos/{theme_id}")
+def set_video(theme_id: str, payload: dict):
+    """Associe une vidéo par URL (YouTube / Vimeo / lien direct)."""
+    src = (payload or {}).get("src", "").strip()
+    if not src:
+        raise HTTPException(status_code=400, detail="Champ 'src' requis.")
+    cfg_entry = {
+        "type": payload.get("type") or _detect_type(src),
+        "src": src,
+        "titre": payload.get("titre", ""),
+        "duree": payload.get("duree", ""),
+    }
+    with _lock:
+        cfg = load_config()
+        cfg[theme_id] = cfg_entry
+        save_config(cfg)
+    return cfg_entry
+
+
+@app.post("/api/videos/{theme_id}/upload")
+async def upload_video(
+    theme_id: str,
+    file: UploadFile = File(...),
+    titre: str = Form(""),
+    duree: str = Form(""),
+):
+    """Upload d'un fichier vidéo -> stockage disque + config persistante."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extension non autorisée ({ext or 'inconnue'}). Formats: {', '.join(sorted(ALLOWED_EXT))}.",
+        )
+
+    dest_name = safe_name(theme_id, file.filename or f"video{ext}")
+    dest_path = VIDEO_DIR / dest_name
+
+    # Écriture en flux, avec garde-fou de taille.
+    size = 0
+    with dest_path.open("wb") as out:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                out.close()
+                dest_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="Fichier trop volumineux (max 500 Mo).")
+            out.write(chunk)
+
+    cfg_entry = {
+        "type": "fichier",
+        "src": f"assets/videos/{dest_name}",
+        "titre": titre,
+        "duree": duree,
+    }
+    with _lock:
+        cfg = load_config()
+        # Si une ancienne vidéo uploadée existait pour ce thème, on la supprime.
+        _delete_owned_file(cfg.get(theme_id))
+        cfg[theme_id] = cfg_entry
+        save_config(cfg)
+    return cfg_entry
+
+
+@app.delete("/api/videos/{theme_id}")
+def delete_video(theme_id: str):
+    """Retire la vidéo d'un thème (et supprime le fichier s'il a été uploadé)."""
+    with _lock:
+        cfg = load_config()
+        entry = cfg.pop(theme_id, None)
+        _delete_owned_file(entry)
+        save_config(cfg)
+    return JSONResponse({"removed": theme_id, "existed": entry is not None})
+
+
+def _delete_owned_file(entry) -> None:
+    """Supprime le fichier disque uniquement s'il est stocké sous assets/videos/."""
+    if not entry:
+        return
+    src = entry.get("src", "")
+    if src.startswith("assets/videos/"):
+        target = (FRONTEND_ROOT / src).resolve()
+        try:
+            if VIDEO_DIR.resolve() in target.parents and target.exists():
+                target.unlink()
+        except OSError:
+            pass
+
+
+def _detect_type(url: str) -> str:
+    if re.search(r"youtu\.?be", url):
+        return "youtube"
+    if "vimeo.com" in url:
+        return "vimeo"
+    return "url"
+
+
+# --- Front statique ----------------------------------------------------------
+# Monté en dernier (à la racine) : les routes /api/* définies au-dessus priment.
+# Sert index.html, css/, js/, data/, assets/ (dont les vidéos uploadées).
+app.mount("/", StaticFiles(directory=str(FRONTEND_ROOT), html=True), name="static")

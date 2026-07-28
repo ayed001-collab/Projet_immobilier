@@ -24,6 +24,9 @@ FC.data = (function () {
       });
     });
     _curriculum.themes.forEach((t) => { _themeById[t.id] = t; });
+
+    // Détection du mode (backend connecté ou repli localStorage) + cache vidéos.
+    await loadVideoConfig();
     return _curriculum;
   }
 
@@ -58,40 +61,114 @@ FC.data = (function () {
     (PARCOURS.find((p) => p.niveau === theme.niveau) || PARCOURS[0]).id;
 
   /* ---------------------------------------------------------------------
-     VIDÉOS
-     L'application étant statique (sans backend), la configuration des vidéos
-     gérée par l'admin est persistée côté navigateur (localStorage) et vient
-     surcharger la vidéo éventuellement définie dans curriculum.json.
-     Les fichiers uploadés en local sont lus via la File API et jouables le
-     temps de la session (blob), en attendant leur dépôt dans assets/videos/.
-     --------------------------------------------------------------------- */
-  const LS_KEY = "fc.videos.overrides";
-  const _sessionBlobs = {}; // themeId -> objectURL (fichiers uploadés cette session)
+     VIDÉOS — deux modes, transparents pour le reste de l'application :
 
-  function getOverrides() {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }
-    catch (e) { return {}; }
+     • MODE CONNECTÉ : si le backend (server/app.py) répond sur `api/videos`,
+       les surcharges vidéo sont lues et écrites côté serveur. Les fichiers
+       uploadés sont stockés sur disque (assets/videos/) et servis à tous :
+       persistance réelle, partagée entre utilisateurs.
+
+     • MODE LOCAL (repli) : sans backend, les surcharges sont persistées dans
+       le navigateur (localStorage) et un fichier uploadé est jouable le temps
+       de la session (blob), en attendant son dépôt manuel dans assets/videos/.
+
+     Dans les deux cas, une surcharge prime sur la vidéo définie dans
+     curriculum.json. Le cache `_overrides` est chargé une fois au démarrage.
+     --------------------------------------------------------------------- */
+  const API_BASE = "api";
+  const LS_KEY = "fc.videos.overrides";
+  const _sessionBlobs = {};   // themeId -> objectURL (fichiers uploadés, mode local)
+  let _apiAvailable = false;   // le backend répond-il ?
+  let _overrides = {};         // cache des surcharges (serveur ou localStorage)
+
+  const readLocal = () => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch (e) { return {}; }
+  };
+  const writeLocal = () => localStorage.setItem(LS_KEY, JSON.stringify(_overrides));
+
+  /** Détecte le mode et initialise le cache des surcharges. */
+  async function loadVideoConfig() {
+    try {
+      const res = await fetch(API_BASE + "/videos", { cache: "no-cache" });
+      if (res.ok) {
+        _apiAvailable = true;
+        _overrides = (await res.json()).videos || {};
+        return;
+      }
+    } catch (e) { /* backend absent -> repli */ }
+    _apiAvailable = false;
+    _overrides = readLocal();
   }
-  function saveOverride(themeId, cfg) {
-    const all = getOverrides();
-    if (cfg == null) delete all[themeId]; else all[themeId] = cfg;
-    localStorage.setItem(LS_KEY, JSON.stringify(all));
-  }
+
+  const isConnected = () => _apiAvailable;
+  function getOverrides() { return _overrides; }
   function setSessionBlob(themeId, objectUrl) { _sessionBlobs[themeId] = objectUrl; }
   function sessionBlob(themeId) { return _sessionBlobs[themeId] || null; }
 
+  /** Enregistre une vidéo par URL (YouTube / Vimeo / lien direct). */
+  async function setVideoUrl(themeId, cfg) {
+    if (_apiAvailable) {
+      const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg),
+      });
+      if (!res.ok) throw new Error(await errText(res, "Échec de l'enregistrement"));
+      _overrides[themeId] = await res.json();
+    } else {
+      _overrides[themeId] = { type: cfg.type, src: cfg.src, titre: cfg.titre, duree: cfg.duree };
+      writeLocal();
+    }
+  }
+
+  /** Upload d'un fichier vidéo. Mode connecté = persistance serveur ; sinon session. */
+  async function uploadVideoFile(themeId, file, meta) {
+    if (_apiAvailable) {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("titre", (meta && meta.titre) || "");
+      fd.append("duree", (meta && meta.duree) || "");
+      const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId) + "/upload", {
+        method: "POST", body: fd,
+      });
+      if (!res.ok) throw new Error(await errText(res, "Échec de l'upload"));
+      _overrides[themeId] = await res.json();
+      delete _sessionBlobs[themeId]; // le serveur sert désormais le fichier
+    } else {
+      _sessionBlobs[themeId] = URL.createObjectURL(file);
+      _overrides[themeId] = {
+        type: "fichier", src: "assets/videos/" + file.name,
+        titre: (meta && meta.titre) || "", duree: (meta && meta.duree) || "", pendingUpload: true,
+      };
+      writeLocal();
+    }
+  }
+
+  /** Retire la vidéo d'un thème. */
+  async function removeVideo(themeId) {
+    if (_apiAvailable) {
+      await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), { method: "DELETE" });
+    }
+    delete _overrides[themeId];
+    delete _sessionBlobs[themeId];
+    if (!_apiAvailable) writeLocal();
+  }
+
+  async function errText(res, fallback) {
+    try { const j = await res.json(); return j.detail || `${fallback} (${res.status})`; }
+    catch (e) { return `${fallback} (${res.status})`; }
+  }
+
   /**
-   * Vidéo effective d'un thème : surcharge admin (localStorage) si présente,
+   * Vidéo effective d'un thème : surcharge (serveur ou local) si présente,
    * sinon la vidéo du référentiel. Retourne null si aucune vidéo.
    */
   function getVideo(theme) {
-    const ov = getOverrides()[theme.id];
+    const ov = _overrides[theme.id];
     const base = ov || theme.video || null;
     if (!base) return null;
     const v = Object.assign({}, base);
-    // Un fichier uploadé cette session prime pour la lecture immédiate.
+    // En mode local, un fichier uploadé cette session prime pour la lecture.
     const blob = sessionBlob(theme.id);
-    if (blob) v.playSrc = blob; else v.playSrc = v.src;
+    v.playSrc = blob || v.src;
     return v;
   }
 
@@ -147,6 +224,6 @@ FC.data = (function () {
     niveauLibelle, typeLibelle, filter, breadcrumb,
     parcours, parcoursById, parcoursOfTheme,
     getVideo, formats, hasPage,
-    getOverrides, saveOverride, setSessionBlob, sessionBlob,
+    isConnected, getOverrides, setVideoUrl, uploadVideoFile, removeVideo,
   };
 })();

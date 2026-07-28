@@ -60,22 +60,27 @@ Exemples de thèmes fournis :
 
 ### Formats de restitution & espace admin (vidéos)
 
-L'application est **statique (sans backend)**. La gestion des vidéos est donc conçue en conséquence :
+Depuis l'**espace admin** (lien en en-tête, ou `#/admin`), l'administrateur associe à chaque thème
+fondamental une vidéo, de deux manières :
 
-- Depuis l'**espace admin** (lien en en-tête, ou `#/admin`), l'administrateur associe à chaque thème
-  fondamental une vidéo, de deux manières :
-  1. **Lien hébergé** : URL **YouTube**, **Vimeo** ou **fichier `.mp4`** — pris en compte
-     immédiatement.
-  2. **Upload d'un fichier local** : lu via la **File API** et jouable **le temps de la session**.
-- La configuration est **persistée dans le navigateur** (`localStorage`) et **surcharge** la vidéo
-  éventuellement définie dans `curriculum.json`.
-- Pour une **diffusion permanente et partagée**, deux étapes :
-  1. déposer le fichier vidéo dans [`assets/videos/`](assets/videos/) ;
-  2. cliquer **« Exporter la configuration (JSON) »** et reporter chaque entrée sous la clé `video`
-     du thème concerné dans `data/curriculum.json`.
+1. **Lien hébergé** : URL **YouTube**, **Vimeo** ou **fichier `.mp4`**.
+2. **Upload d'un fichier vidéo** (`.mp4`, `.webm`…).
 
-> Une évolution avec backend / stockage objet permettrait l'upload persistant et multi-utilisateurs ;
-> l'architecture actuelle (contenu piloté par JSON) s'y prête sans refonte.
+L'application fonctionne selon **deux modes**, détectés automatiquement (un indicateur ● Connecté /
+○ Local est affiché dans l'espace admin) :
+
+| | **Mode connecté** (backend lancé) | **Mode local** (pur statique, repli) |
+|---|---|---|
+| Upload de fichier | **Persisté sur le serveur** (`assets/videos/`), visible par tous | Jouable **le temps de la session** (File API) |
+| Configuration | `server/storage/videos.json` (serveur) | `localStorage` (navigateur) |
+| Diffusion permanente | **Automatique** | Déposer le fichier dans `assets/videos/` + exporter la config vers `curriculum.json` |
+
+> **En clair** : pour un **vrai upload persistant et partagé entre utilisateurs**, lancez le backend
+> (voir ci-dessous). Sans backend, l'app reste pleinement utilisable pour la consultation et la
+> configuration de vidéos par URL, l'upload de fichier étant alors limité à la session.
+
+Dans les deux cas, une vidéo configurée par l'admin **surcharge** celle éventuellement définie dans
+`curriculum.json`.
 
 ---
 
@@ -91,6 +96,10 @@ pages HTML statiques. Justification :
   dupliqueraient le gabarit et complexifieraient l'enrichissement.
 - **URL par thème** (`#/theme/<id>`) : partage et navigation directs, sans framework.
 - React n'apporterait aucun bénéfice à cette échelle tout en imposant une chaîne d'outillage.
+- **Backend optionnel et découplé** : le front reste statique ; un petit service FastAPI
+  (`server/`) s'ajoute uniquement pour l'**upload persistant** des vidéos, sans modifier le reste.
+  Le front bascule automatiquement en mode connecté si l'API répond, sinon il fonctionne en pur
+  statique (repli `localStorage`).
 
 ---
 
@@ -113,7 +122,12 @@ formation-capgemini/
 │   └── curriculum.json     # ► LE RÉFÉRENTIEL : domaines, taxonomie, thèmes et contenus
 ├── assets/
 │   ├── favicon.svg
-│   └── videos/             # Fichiers vidéo déposés pour diffusion permanente
+│   └── videos/             # Fichiers vidéo uploadés (servis par le backend)
+├── server/                 # Backend OPTIONNEL (upload persistant)
+│   ├── app.py              # API FastAPI + service du front statique
+│   ├── requirements.txt
+│   └── storage/
+│       └── videos.json     # Mapping persistant thème -> vidéo (généré à l'exécution)
 └── README.md
 ```
 
@@ -122,23 +136,45 @@ formation-capgemini/
 ## Lancer l'application en local
 
 L'application charge `data/curriculum.json` via `fetch`, elle doit donc être servie par un
-**serveur HTTP local** (l'ouverture directe du fichier `index.html` via `file://` est bloquée par
-les navigateurs pour des raisons de sécurité).
+**serveur HTTP** (l'ouverture directe du fichier `index.html` via `file://` est bloquée par les
+navigateurs pour des raisons de sécurité). Deux options selon le besoin.
 
-Au choix, depuis le dossier `formation-capgemini/` :
+### Option A — Statique (consultation + config par URL)
+
+Depuis le dossier `formation-capgemini/` :
 
 ```bash
-# Python (présent par défaut sur la plupart des postes)
-python3 -m http.server 8080
-
-# ou Node.js
-npx serve .
-
-# ou PHP
-php -S localhost:8080
+python3 -m http.server 8080      # ou : npx serve .   |   php -S localhost:8080
 ```
 
-Puis ouvrir **http://localhost:8080** dans le navigateur.
+Puis ouvrir **http://localhost:8080**. L'espace admin fonctionne en **mode local** (voir plus haut).
+
+### Option B — Avec backend (upload de vidéos persistant) ⭐
+
+Pour un **vrai upload persistant et partagé**, lancez le backend, qui sert aussi le front :
+
+```bash
+cd formation-capgemini
+pip install -r server/requirements.txt
+uvicorn server.app:app --port 8000        # ajouter --reload en développement
+```
+
+Puis ouvrir **http://localhost:8000**. L'espace admin passe automatiquement en **mode connecté** :
+les fichiers uploadés sont stockés dans `assets/videos/` et la configuration dans
+`server/storage/videos.json`.
+
+**API exposée** (préfixe `/api`) :
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| `GET` | `/api/videos` | Configuration des vidéos (surcharges) |
+| `PUT` | `/api/videos/{themeId}` | Associer une vidéo par URL (YouTube / Vimeo / .mp4) |
+| `POST` | `/api/videos/{themeId}/upload` | Uploader un fichier vidéo (multipart) |
+| `DELETE` | `/api/videos/{themeId}` | Retirer la vidéo (et supprimer le fichier uploadé) |
+
+> **Évolution vers un stockage objet (S3…)** : seules les fonctions de stockage de
+> [`server/app.py`](server/app.py) (`save_config`, écriture dans `VIDEO_DIR`) sont à remplacer par
+> des appels au bucket. Le front et le contrat d'API restent inchangés.
 
 ---
 
