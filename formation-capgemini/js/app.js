@@ -12,8 +12,10 @@ window.FC = window.FC || {};
   function route() {
     const hash = location.hash || "#/";
     const parts = hash.replace(/^#\//, "").split("/"); // ex: ["theme", "id"]
+    const head = parts[0];
 
-    if (parts[0] === "theme" && parts[1]) {
+    // Fiche structurée : #/theme/<id>
+    if (head === "theme" && parts[1]) {
       const theme = FC.data.themeById(decodeURIComponent(parts[1]));
       if (theme) {
         document.title = theme.titre + " — Formation Capgemini";
@@ -21,11 +23,31 @@ window.FC = window.FC || {};
         window.scrollTo(0, 0);
         return;
       }
-      // Thème inconnu -> retour catalogue
     }
 
+    // Lecteur vidéo : #/video/<id>
+    if (head === "video" && parts[1]) {
+      const theme = FC.data.themeById(decodeURIComponent(parts[1]));
+      if (theme) {
+        document.title = "Vidéo — " + theme.titre;
+        FC.video.render(view, theme);
+        window.scrollTo(0, 0);
+        return;
+      }
+    }
+
+    // Espace admin : #/admin
+    if (head === "admin") {
+      document.title = "Espace admin — Vidéos";
+      FC.admin.render(view);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    // Catalogue par parcours : #/fondamentaux | #/expert (défaut : fondamentaux)
+    const tab = (head === "expert" || head === "fondamentaux") ? head : "fondamentaux";
     document.title = "Catalogue de formation — Capgemini";
-    FC.catalogue.render(view);
+    FC.catalogue.render(view, tab);
     window.scrollTo(0, 0);
   }
 

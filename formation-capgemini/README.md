@@ -24,25 +24,58 @@ formation = éditer ce JSON, **sans toucher au code**.
 
 ## Aperçu fonctionnel
 
-1. **Catalogue** (page d'accueil) : les thèmes sont regroupés par **domaine**, présentés en cartes,
-   avec **recherche plein texte** et **filtres** par domaine, niveau (Conceptuel / Spécialisé) et
-   type (Connaissance générale / Acte de gestion).
-2. **Clic sur une carte** → routage vers la **fiche de formation** correspondante (URL dédiée par
-   thème : `#/theme/<id>`).
-3. **Fiche de formation** : un **gabarit unique** rempli dynamiquement depuis le JSON, avec fil
-   d'Ariane, badges, sommaire ancré, et les sections standardisées (définition, objectifs, parcours
-   de l'acte de gestion, règles de gestion, réglementation, fiscalité, points de vigilance,
-   logigramme, quiz, sources).
+Le catalogue est organisé en **deux parcours présentés en onglets**, qui séparent les formations
+générales des formations spécialisées :
 
-Deux niveaux de contenu sont modélisés :
-
-| Niveau | Sens | Exemples |
+| Onglet (parcours) | Contenu | Niveau |
 |---|---|---|
-| **Conceptuel** | Connaissances générales / socle | *Principes de l'assurance-vie*, *Fiscalité de l'assurance-vie*, *Cadre réglementaire de la retraite* |
-| **Spécialisé** | Acte de gestion opérationnel | *Liquidation retraite (PERO)*, *Rachat partiel*, *Arbitrage*, *Transfert Loi Pacte* |
+| **Les fondamentaux de l'assurance** | Connaissances générales / socle | Conceptuel |
+| **Parcours Expert** | Actes de gestion opérationnels | Spécialisé |
+
+1. **Onglet « Les fondamentaux de l'assurance »** : chaque thème est une **carte à double format de
+   restitution** :
+   - **▶ Vidéo de formation** → lecteur vidéo dédié (`#/video/<id>`) ;
+   - **📄 Page de formation** → fiche web structurée (`#/theme/<id>`).
+
+   Un thème sans vidéo affiche l'état *« Vidéo à venir »* ; la vidéo s'ajoute depuis l'espace admin.
+2. **Onglet « Parcours Expert »** : chaque carte mène directement à la **fiche de formation**
+   structurée (l'acte de gestion détaillé).
+3. **Recherche plein texte** et **filtre par domaine** dans chaque onglet (le niveau est porté par
+   l'onglet lui-même).
+4. **Fiche de formation** : un **gabarit unique** rempli dynamiquement depuis le JSON — fil
+   d'Ariane, badges, sommaire ancré, et sections standardisées (définition, objectifs, parcours de
+   l'acte de gestion, règles de gestion, réglementation, fiscalité, points de vigilance, logigramme,
+   quiz, sources).
+5. **Espace admin** (`#/admin`) : gestion des **vidéos** des thèmes fondamentaux (voir plus bas).
+
+Exemples de thèmes fournis :
+
+| Parcours | Thèmes d'exemple |
+|---|---|
+| Fondamentaux | *Principes de l'assurance-vie*, *Fiscalité de l'assurance-vie*, *Cadre réglementaire de la retraite* |
+| Expert | *Liquidation retraite (PERO)*, *Rachat partiel*, *Arbitrage*, *Transfert Loi Pacte* |
 
 > La fiche **« Liquidation retraite (PERO) »** est entièrement renseignée et sert de **modèle de
 > référence** (badge « Fiche modèle » dans le catalogue).
+
+### Formats de restitution & espace admin (vidéos)
+
+L'application est **statique (sans backend)**. La gestion des vidéos est donc conçue en conséquence :
+
+- Depuis l'**espace admin** (lien en en-tête, ou `#/admin`), l'administrateur associe à chaque thème
+  fondamental une vidéo, de deux manières :
+  1. **Lien hébergé** : URL **YouTube**, **Vimeo** ou **fichier `.mp4`** — pris en compte
+     immédiatement.
+  2. **Upload d'un fichier local** : lu via la **File API** et jouable **le temps de la session**.
+- La configuration est **persistée dans le navigateur** (`localStorage`) et **surcharge** la vidéo
+  éventuellement définie dans `curriculum.json`.
+- Pour une **diffusion permanente et partagée**, deux étapes :
+  1. déposer le fichier vidéo dans [`assets/videos/`](assets/videos/) ;
+  2. cliquer **« Exporter la configuration (JSON) »** et reporter chaque entrée sous la clé `video`
+     du thème concerné dans `data/curriculum.json`.
+
+> Une évolution avec backend / stockage objet permettrait l'upload persistant et multi-utilisateurs ;
+> l'architecture actuelle (contenu piloté par JSON) s'y prête sans refonte.
 
 ---
 
@@ -69,15 +102,18 @@ formation-capgemini/
 ├── css/
 │   └── styles.css          # Design system Capgemini (bleu #0070AD), responsive
 ├── js/
-│   ├── data.js             # Chargement + indexation du référentiel, filtres, recherche
+│   ├── data.js             # Chargement + indexation du référentiel, filtres, parcours, vidéos
 │   ├── ui.js               # Helpers de rendu partagés (échappement, badges)
-│   ├── catalogue.js        # Vue catalogue : cartes, filtres, recherche
+│   ├── catalogue.js        # Vue catalogue : onglets parcours, cartes, filtres, recherche
 │   ├── fiche.js            # GABARIT UNIQUE de fiche (rendu dynamique des sections)
+│   ├── video.js            # Vue lecteur vidéo (fichier / URL / YouTube / Vimeo)
+│   ├── admin.js            # Espace admin : gestion / upload des vidéos
 │   └── app.js              # Bootstrap + routeur SPA (hash)
 ├── data/
 │   └── curriculum.json     # ► LE RÉFÉRENTIEL : domaines, taxonomie, thèmes et contenus
 ├── assets/
-│   └── favicon.svg
+│   ├── favicon.svg
+│   └── videos/             # Fichiers vidéo déposés pour diffusion permanente
 └── README.md
 ```
 
@@ -134,6 +170,12 @@ Puis ouvrir **http://localhost:8080** dans le navigateur.
       "resume": "…",
       "dureeEstimee": "45 min",
       "themePilote": true,                 // (optionnel) affiche le badge "Fiche modèle"
+      "video": {                           // (optionnel) vidéo de formation (parcours Fondamentaux)
+        "type": "url",                     //   "url" | "youtube" | "vimeo" | "fichier"
+        "src": "https://…/video.mp4",      //   URL, ou "assets/videos/xxx.mp4" pour un fichier
+        "titre": "…",
+        "duree": "8 min"
+      },
       "sections": { /* voir ci-dessous */ }
     }
   ]

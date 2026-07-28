@@ -62,6 +62,12 @@
       "type": "connaissance-generale",
       "resume": "Comprendre la nature juridique du contrat d'assurance-vie, ses supports, ses acteurs et son cycle de vie.",
       "dureeEstimee": "20 min",
+      "video": {
+        "type": "url",
+        "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        "titre": "Vidéo de démonstration — remplacer par la vraie vidéo de formation (espace admin).",
+        "duree": "9 min"
+      },
       "sections": {
         "definition": [
           "L'assurance-vie est un contrat par lequel l'assureur s'engage, en contrepartie de versements (primes), à verser un capital ou une rente à un ou plusieurs bénéficiaires en cas de vie de l'assuré au terme, ou de décès de l'assuré avant le terme.",
@@ -182,6 +188,12 @@
       "type": "connaissance-generale",
       "resume": "Comprendre l'architecture du Plan d'Épargne Retraite issu de la Loi Pacte : trois compartiments, un cadre unifié.",
       "dureeEstimee": "25 min",
+      "video": {
+        "type": "url",
+        "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+        "titre": "Vidéo de démonstration — remplacer par la vraie vidéo de formation (espace admin).",
+        "duree": "6 min"
+      },
       "sections": {
         "definition": [
           "Le Plan d'Épargne Retraite (PER) est le produit d'épargne retraite unifié créé par la Loi Pacte (loi n° 2019-486 du 22 mai 2019), en vigueur depuis le 1er octobre 2019.",

@@ -280,13 +280,107 @@ pre.mermaid {
 }
 .app-footer .container { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
+/* ---------------------------------------------------------------- Header link */
+.header-link {
+  color: #fff; font-weight: 600; font-size: 14px; opacity: .95;
+  border: 1px solid rgba(255,255,255,.5); padding: 7px 14px; border-radius: 999px;
+}
+.header-link:hover { background: rgba(255,255,255,.15); text-decoration: none; }
+
+/* ---------------------------------------------------------------- Onglets parcours */
+.tabs-bar { background: var(--card); border-bottom: 1px solid var(--line); position: relative; z-index: 3; box-shadow: var(--shadow); }
+.tabs { display: flex; gap: 6px; }
+.tab {
+  padding: 16px 22px; font-weight: 700; font-size: 15px; color: var(--ink-soft);
+  border-bottom: 3px solid transparent; cursor: pointer;
+}
+.tab:hover { color: var(--cap-blue-dark); text-decoration: none; }
+.tab.active { color: var(--cap-blue); border-bottom-color: var(--cap-blue); }
+.parcours-accroche { color: var(--ink-soft); font-size: 15px; margin: 20px 0 4px; }
+
+/* ---------------------------------------------------------------- Cartes double format */
+.card--link { cursor: pointer; }
+.card--dual { cursor: default; }
+.formats {
+  border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.formats__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--ink-soft); }
+.formats__btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.fmt {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; color: var(--cap-blue-dark);
+  padding: 9px 13px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+  font-family: inherit; transition: all .12s ease; flex: 1 1 auto; justify-content: center;
+}
+.fmt:hover { border-color: var(--cap-cyan); background: #f2fbff; }
+.fmt__ico { font-size: 13px; }
+.fmt--video { background: var(--cap-blue); border-color: var(--cap-blue); color: #fff; }
+.fmt--video:hover { background: var(--cap-blue-dark); border-color: var(--cap-blue-dark); }
+.fmt--off { color: var(--ink-soft); background: #f5f7fa; cursor: not-allowed; opacity: .8; }
+
+/* ---------------------------------------------------------------- Lecteur vidéo */
+.video-frame {
+  position: relative; width: 100%; background: #0f2233; border-radius: var(--radius-sm); overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.video-embed { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.video-frame .empty { position: static; height: 100%; display: grid; place-items: center; color: #cfe8f6; background: transparent; border: 0; }
+.video-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------- Admin */
+.admin-note {
+  background: #fff8e6; border: 1px solid #f0d98a; border-left: 4px solid #e0a900;
+  border-radius: var(--radius-sm); padding: 14px 16px; font-size: 14px; color: #6b5300; margin-bottom: 18px;
+}
+.admin-note code { background: #fff2cc; padding: 1px 5px; border-radius: 4px; }
+.admin-toolbar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.btn {
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  padding: 10px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 14px;
+  font-family: inherit; cursor: pointer; transition: all .12s ease;
+}
+.btn:hover { border-color: var(--cap-cyan); }
+.btn--primary { background: var(--cap-blue); border-color: var(--cap-blue); color: #fff; }
+.btn--primary:hover { background: var(--cap-blue-dark); border-color: var(--cap-blue-dark); }
+.btn--ghost { color: var(--cap-accent); border-color: #f3c2ca; }
+.btn--ghost:hover { background: #ffe7ec; }
+
+.admin-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+.admin-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.admin-card__head h3 { margin: 0 0 3px; color: var(--cap-navy); font-size: 17px; }
+.admin-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.admin-status--on { background: #e9f7ee; color: #1c7a45; }
+.admin-status--off { background: #eef1f5; color: var(--ink-soft); }
+
+.admin-grid { display: grid; grid-template-columns: 1fr 160px; gap: 14px; margin-bottom: 12px; }
+.admin-card label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--cap-navy); }
+.admin-card input[type="text"], .admin-card input[type="url"], .admin-card input[type="file"] {
+  font: inherit; font-weight: 400; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fbfcfe;
+}
+.admin-card input:focus { outline: 2px solid var(--cap-cyan); border-color: var(--cap-cyan); }
+.admin-source { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: end; margin-bottom: 14px; }
+.admin-source__sep { padding-bottom: 10px; color: var(--ink-soft); font-size: 13px; text-transform: uppercase; }
+.admin-card__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.admin-toast { margin-top: 12px; font-size: 13px; color: #1c7a45; background: #e9f7ee; border-radius: var(--radius-sm); padding: 8px 12px; display: none; }
+.admin-toast.show { display: block; }
+.admin-toast--err { color: var(--cap-accent); background: #ffe7ec; }
+
 /* ---------------------------------------------------------------- Responsive */
 @media (max-width: 860px) {
   .fiche__layout { grid-template-columns: 1fr; }
   .fiche__toc { position: static; }
   .hero h1 { font-size: 24px; }
 }
+@media (max-width: 700px) {
+  .admin-grid { grid-template-columns: 1fr; }
+  .admin-source { grid-template-columns: 1fr; }
+  .admin-source__sep { padding: 0; }
+  .tabs { overflow-x: auto; }
+  .tab { padding: 14px 16px; white-space: nowrap; }
+}
 @media (max-width: 520px) {
   .app-header .brand__title { display: none; }
   .table td:first-child { width: auto; }
+  .header-link { padding: 5px 10px; font-size: 13px; }
 }
