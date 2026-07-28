@@ -235,6 +235,14 @@ a:hover { text-decoration: underline; }
 }
 .step__desc { margin: 4px 0 0; color: var(--ink-soft); font-size: 14px; }
 
+/* Checklist groupée (données de saisie) */
+.groupes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.groupe { background: #f8fafc; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 16px; }
+.groupe__titre { margin: 0 0 10px; font-weight: 700; color: var(--cap-navy); font-size: 14px; }
+.groupe .list { gap: 7px; }
+.groupe .list li { padding-left: 22px; font-size: 14px; }
+.groupe .list li::before { top: 7px; width: 7px; height: 7px; background: var(--cap-cyan); }
+
 /* Tableaux fiscalité / réglementation */
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }

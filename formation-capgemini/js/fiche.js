@@ -16,6 +16,8 @@ FC.fiche = (function () {
     { key: "objectifs",     anchor: "objectifs",   title: "Objectifs pédagogiques",     icon: "🎯", render: (s) => renderList(s.objectifs) },
     { key: "etapes",        anchor: "etapes",      title: "Parcours de l'acte de gestion", icon: "🧭", render: (s) => renderSteps(s.etapes) },
     { key: "reglesGestion", anchor: "regles",      title: "Règles de gestion",          icon: "⚙️", render: (s) => renderList(s.reglesGestion) },
+    { key: "donneesSaisie", anchor: "donnees",     title: "Données nécessaires à la saisie", icon: "📋", render: (s) => renderGroupes(s.donneesSaisie) },
+    { key: "pieces",        anchor: "pieces",      title: "Pièces justificatives & contrôles", icon: "📎", render: (s) => renderGroupes(s.pieces) },
     { key: "reglementation",anchor: "reglementation", title: "Réglementation en vigueur", icon: "⚖️", render: (s) => renderRefTable(s.reglementation) },
     { key: "fiscalite",     anchor: "fiscalite",   title: "Aspects fiscaux",            icon: "💶", render: (s) => renderFiscalite(s.fiscalite) },
     { key: "vigilance",     anchor: "vigilance",   title: "Points de vigilance", icon: "⚠️", render: (s) => renderList(s.vigilance, "list--warn") },
@@ -105,6 +107,17 @@ FC.fiche = (function () {
     if (!arr || !arr.length) return "";
     return `<ul class="list ${extraClass || ""}">` +
       arr.map((x) => `<li>${E(x)}</li>`).join("") + `</ul>`;
+  }
+
+  /** Checklist groupée : [{ titre, items:[...] }]. */
+  function renderGroupes(groupes) {
+    if (!groupes || !groupes.length) return "";
+    return `<div class="groupes">` + groupes.map((g) =>
+      `<div class="groupe">
+         <p class="groupe__titre">${E(g.titre)}</p>
+         ${renderList(g.items)}
+       </div>`
+    ).join("") + `</div>`;
   }
 
   function renderSteps(steps) {
