@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catalogue de formation — Capgemini</title>
+  <meta name="description" content="Plate-forme de formation Assurance / Épargne / Retraite — référentiel de thèmes conceptuels et actes de gestion." />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- En-tête de marque (persistant) -->
+  <header class="app-header">
+    <div class="container">
+      <div class="brand" title="Retour au catalogue">
+        <span class="brand__logo">Capg<span>emini</span></span>
+        <span class="brand__title">
+          Académie Assurance &amp; Épargne
+          <small>Formation · Bancassurance</small>
+        </span>
+      </div>
+      <span class="spacer"></span>
+      <span class="version"></span>
+    </div>
+  </header>
+
+  <!-- Conteneur de vue (rempli par le routeur : catalogue ou fiche) -->
+  <div id="view"></div>
+
+  <!-- Pied de page -->
+  <footer class="app-footer">
+    <div class="container">
+      <span>Plate-forme de formation — contenus pédagogiques. Se référer aux textes officiels en vigueur.</span>
+      <span>Identité visuelle Capgemini · Référentiel piloté par <code>data/curriculum.json</code></span>
+    </div>
+  </footer>
+
+  <!-- Scripts (ordre important : data → ui → vues → routeur) -->
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/catalogue.js"></script>
+  <script src="js/fiche.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
