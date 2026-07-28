@@ -92,7 +92,9 @@ FC.catalogue = (function () {
   function renderResults(container) {
     const current = FC.data.parcoursById(state.tab);
     // Le parcours fixe le niveau ; on réutilise le moteur de filtre existant.
-    const results = FC.data.filter({ q: state.q, domaine: state.domaine, niveau: current.niveau });
+    // Espace utilisateur : on exclut les formations masquées ou supprimées par l'admin.
+    const results = FC.data.filter({ q: state.q, domaine: state.domaine, niveau: current.niveau })
+      .filter((t) => FC.data.isVisibleToUsers(t));
 
     const countEl = container.querySelector("#count");
     const box = container.querySelector("#results");

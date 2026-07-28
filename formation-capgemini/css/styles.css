@@ -353,6 +353,22 @@ pre.mermaid {
 .admin-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
 .admin-status--on { background: #e9f7ee; color: #1c7a45; }
 .admin-status--off { background: #eef1f5; color: var(--ink-soft); }
+.admin-status--visible { background: #e9f7ee; color: #1c7a45; }
+.admin-status--hidden { background: #fff1d6; color: #8a5a00; }
+.admin-status--deleted { background: #ffe1e6; color: var(--cap-accent); }
+.admin-badges { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+
+.admin-parcours { margin-bottom: 28px; }
+.admin-parcours .domain-block__head { margin-bottom: 14px; }
+
+.admin-card--hidden { opacity: .9; border-left: 4px solid #e0a900; }
+.admin-card--deleted { opacity: .7; border-left: 4px solid var(--cap-accent); background: #fff9fa; }
+
+.admin-visibility {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line);
+}
+.admin-visibility__label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--ink-soft); }
 
 .admin-grid { display: grid; grid-template-columns: 1fr 160px; gap: 14px; margin-bottom: 12px; }
 .admin-card label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--cap-navy); }

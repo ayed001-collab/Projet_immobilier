@@ -183,6 +183,21 @@ les fichiers uploadés sont stockés dans `assets/videos/` et la configuration d
 | `PUT` | `/api/videos/{themeId}` | 🔒 | Associer une vidéo par URL (YouTube / Vimeo / .mp4) |
 | `POST` | `/api/videos/{themeId}/upload` | 🔒 | Uploader un fichier vidéo (multipart) |
 | `DELETE` | `/api/videos/{themeId}` | 🔒 | Retirer la vidéo (et supprimer le fichier uploadé) |
+| `GET` | `/api/formations` | — | Statut de visibilité des formations (lecture, publique) |
+| `PUT` | `/api/formations/{themeId}` | 🔒 | Définir le statut : `visible` / `hidden` / `deleted` |
+
+### Visibilité des formations (masquer / supprimer)
+
+Depuis l'espace admin, chaque formation (des **deux parcours**) dispose de contrôles de visibilité :
+
+- **Masquer / Réafficher** : retire la formation de l'espace utilisateur sans la perdre (réversible).
+- **Supprimer / Restaurer** : la formation disparaît de l'espace utilisateur *et* n'est plus
+  accessible par lien direct ; l'admin peut la **restaurer** (suppression réversible, non
+  destructive du référentiel `curriculum.json`).
+
+Les statuts sont persistés **côté serveur** (mode connecté, valable pour tous les utilisateurs) ou
+en **localStorage** (mode local). Une formation `hidden` reste atteignable par lien direct
+(non listée) ; une formation `deleted` est bloquée aussi en accès direct.
 
 ### Authentification de l'espace admin 🔒
 

@@ -45,6 +45,7 @@ FRONTEND_ROOT = SERVER_DIR.parent                     # dossier formation-capgem
 VIDEO_DIR = FRONTEND_ROOT / "assets" / "videos"       # fichiers servis à assets/videos/<f>
 STORAGE_DIR = SERVER_DIR / "storage"
 CONFIG_FILE = STORAGE_DIR / "videos.json"             # mapping persistant thème -> vidéo
+FORMATIONS_FILE = STORAGE_DIR / "formations.json"     # statut de visibilité par thème
 
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -128,6 +129,21 @@ def save_config(cfg: dict) -> None:
     tmp.replace(CONFIG_FILE)  # écriture atomique
 
 
+def load_formations() -> dict:
+    if FORMATIONS_FILE.exists():
+        try:
+            return json.loads(FORMATIONS_FILE.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return {}
+    return {}
+
+
+def save_formations(cfg: dict) -> None:
+    tmp = FORMATIONS_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(FORMATIONS_FILE)  # écriture atomique
+
+
 def safe_name(theme_id: str, original: str) -> str:
     """Nom de fichier sûr, préfixé par le thème pour éviter les collisions."""
     base = re.sub(r"[^A-Za-z0-9._-]", "_", Path(original).name).strip("._") or "video"
@@ -163,6 +179,32 @@ def login(payload: dict):
 def list_videos():
     """Retourne la configuration des vidéos (surcharges serveur). Public (lecture)."""
     return {"videos": load_config(), "authRequired": True}
+
+
+# --- Visibilité des formations (masquer / supprimer) -------------------------
+_ALLOWED_STATUS = {"visible", "hidden", "deleted"}
+
+
+@app.get("/api/formations")
+def list_formations():
+    """Statut de visibilité par thème (public : l'espace utilisateur en a besoin)."""
+    return {"formations": load_formations(), "authRequired": True}
+
+
+@app.put("/api/formations/{theme_id}", dependencies=[Depends(require_auth)])
+def set_formation_status(theme_id: str, payload: dict):
+    """Définit le statut d'une formation : visible / hidden / deleted."""
+    status = (payload or {}).get("status", "visible")
+    if status not in _ALLOWED_STATUS:
+        raise HTTPException(status_code=400, detail="Statut invalide.")
+    with _lock:
+        cfg = load_formations()
+        if status == "visible":
+            cfg.pop(theme_id, None)          # visible = état par défaut, pas de surcharge
+        else:
+            cfg[theme_id] = {"status": status}
+        save_formations(cfg)
+    return {"status": status}
 
 
 @app.put("/api/videos/{theme_id}", dependencies=[Depends(require_auth)])

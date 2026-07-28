@@ -17,7 +17,8 @@ window.FC = window.FC || {};
     // Fiche structurée : #/theme/<id>
     if (head === "theme" && parts[1]) {
       const theme = FC.data.themeById(decodeURIComponent(parts[1]));
-      if (theme) {
+      // Une formation supprimée n'est plus accessible, même par lien direct.
+      if (theme && FC.data.themeStatus(theme) !== "deleted") {
         document.title = theme.titre + " — Formation Capgemini";
         FC.fiche.render(view, theme);
         window.scrollTo(0, 0);
@@ -28,7 +29,7 @@ window.FC = window.FC || {};
     // Lecteur vidéo : #/video/<id>
     if (head === "video" && parts[1]) {
       const theme = FC.data.themeById(decodeURIComponent(parts[1]));
-      if (theme) {
+      if (theme && FC.data.themeStatus(theme) !== "deleted") {
         document.title = "Vidéo — " + theme.titre;
         FC.video.render(view, theme);
         window.scrollTo(0, 0);

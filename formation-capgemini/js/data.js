@@ -30,8 +30,9 @@ FC.data = (function () {
     });
     _curriculum.themes.forEach((t) => { _themeById[t.id] = t; });
 
-    // Détection du mode (backend connecté ou repli localStorage) + cache vidéos.
+    // Détection du mode (backend connecté ou repli localStorage) + caches.
     await loadVideoConfig();
+    await loadFormationConfig();
     return _curriculum;
   }
 
@@ -82,11 +83,13 @@ FC.data = (function () {
      --------------------------------------------------------------------- */
   const API_BASE = "api";
   const LS_KEY = "fc.videos.overrides";
+  const LS_FORM = "fc.formations.status";   // statut de visibilité par thème (mode local)
   const TOKEN_KEY = "fc.admin.token";
   const _sessionBlobs = {};   // themeId -> objectURL (fichiers uploadés, mode local)
   let _apiAvailable = false;   // le backend répond-il ?
   let _authRequired = false;   // le backend exige-t-il une authentification pour écrire ?
-  let _overrides = {};         // cache des surcharges (serveur ou localStorage)
+  let _overrides = {};         // cache des surcharges vidéo (serveur ou localStorage)
+  let _formations = {};        // cache des statuts de visibilité (serveur ou localStorage)
 
   const readLocal = () => {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch (e) { return {}; }
@@ -118,6 +121,46 @@ FC.data = (function () {
   function getOverrides() { return _overrides; }
   function setSessionBlob(themeId, objectUrl) { _sessionBlobs[themeId] = objectUrl; }
   function sessionBlob(themeId) { return _sessionBlobs[themeId] || null; }
+
+  /* ---- Visibilité des formations (masquer / supprimer) ------------------- */
+  const readLocalForm = () => {
+    try { return JSON.parse(localStorage.getItem(LS_FORM) || "{}"); } catch (e) { return {}; }
+  };
+  const writeLocalForm = () => localStorage.setItem(LS_FORM, JSON.stringify(_formations));
+
+  /** Charge les statuts de visibilité (serveur si connecté, sinon localStorage). */
+  async function loadFormationConfig() {
+    if (_apiAvailable) {
+      try {
+        const res = await fetch(API_BASE + "/formations", { cache: "no-cache" });
+        if (res.ok) { _formations = (await res.json()).formations || {}; return; }
+      } catch (e) { /* repli */ }
+    }
+    _formations = readLocalForm();
+  }
+
+  /** Statut d'un thème : "visible" (défaut), "hidden" ou "deleted". */
+  function themeStatus(theme) {
+    const id = typeof theme === "string" ? theme : theme.id;
+    return (_formations[id] && _formations[id].status) || "visible";
+  }
+  /** Visible dans l'espace utilisateur ? */
+  const isVisibleToUsers = (theme) => themeStatus(theme) === "visible";
+
+  /** Change le statut d'un thème (masquer / supprimer / réafficher). */
+  async function setFormationStatus(themeId, status) {
+    if (_apiAvailable) {
+      const res = await fetch(API_BASE + "/formations/" + encodeURIComponent(themeId), {
+        method: "PUT",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw await httpError(res, "Échec de la mise à jour du statut");
+    }
+    if (status === "visible") delete _formations[themeId];
+    else _formations[themeId] = { status };
+    if (!_apiAvailable) writeLocalForm();
+  }
 
   /* ---- Authentification admin (mode connecté) ---------------------------- */
   const authRequired = () => _authRequired;
@@ -271,5 +314,6 @@ FC.data = (function () {
     getVideo, formats, hasPage,
     isConnected, getOverrides, setVideoUrl, uploadVideoFile, removeVideo,
     authRequired, isAuthed, login, logout,
+    themeStatus, isVisibleToUsers, setFormationStatus,
   };
 })();
