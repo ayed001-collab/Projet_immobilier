@@ -147,7 +147,7 @@ FC.admin = (function () {
            : `<span class="admin-status admin-status--off">Aucune vidéo</span>`)
       : "";
     const srcLine = (isFondamental && v && !deleted)
-      ? `<div class="card__crumb" style="margin-top:4px">Source vidéo : ${E(v.src)}</div>` : "";
+      ? `<div class="card__crumb" style="margin-top:4px">Source vidéo : ${E(shortSrc(v.src))}</div>` : "";
 
     // Bloc de gestion vidéo (fondamentaux, hors supprimé)
     const videoBlock = (isFondamental && !deleted) ? `
@@ -174,6 +174,14 @@ FC.admin = (function () {
         <button class="btn btn--ghost" data-a="remove-video">Retirer la vidéo</button>
       </div>` : "";
 
+    // Boutons de format affichés aux utilisateurs (fondamentaux, hors supprimé)
+    const formatsRow = (isFondamental && !deleted) ? `
+      <div class="admin-formats">
+        <span class="admin-visibility__label">Boutons affichés aux utilisateurs :</span>
+        <button class="btn" data-a="toggle-video">${FC.data.videoButtonVisible(t) ? "🙈 Masquer le bouton Vidéo" : "👁 Afficher le bouton Vidéo"}</button>
+        <button class="btn" data-a="toggle-page">${FC.data.pageButtonVisible(t) ? "🙈 Masquer la page de formation" : "👁 Afficher la page de formation"}</button>
+      </div>` : "";
+
     return `
       <section class="admin-card admin-card--${status}" data-id="${E(t.id)}">
         <div class="admin-card__head">
@@ -186,9 +194,10 @@ FC.admin = (function () {
         </div>
 
         ${videoBlock}
+        ${formatsRow}
 
         <div class="admin-visibility">
-          <span class="admin-visibility__label">Visibilité :</span>
+          <span class="admin-visibility__label">Visibilité de la formation :</span>
           ${visibilityButtons(status)}
         </div>
       </section>`;
@@ -246,6 +255,16 @@ FC.admin = (function () {
       catch (err) { if (err.auth) { relogin(); return; } toast(card, err.message || "Erreur.", true); }
     });
 
+    // ---- Affichage des boutons de format (fondamentaux) ----
+    on('[data-a="toggle-video"]', async () => {
+      try { await FC.data.setVideoButtonVisible(t.id, !FC.data.videoButtonVisible(t)); renderList(el); }
+      catch (err) { if (err.auth) { relogin(); return; } toast(card, err.message || "Erreur.", true); }
+    });
+    on('[data-a="toggle-page"]', async () => {
+      try { await FC.data.setPageButtonVisible(t.id, !FC.data.pageButtonVisible(t)); renderList(el); }
+      catch (err) { if (err.auth) { relogin(); return; } toast(card, err.message || "Erreur.", true); }
+    });
+
     // ---- Visibilité (tous les parcours) ----
     const changeStatus = async (status, confirmMsg) => {
       if (confirmMsg && !confirm(confirmMsg)) return;
@@ -293,6 +312,15 @@ FC.admin = (function () {
     return { youtube: "YouTube", vimeo: "Vimeo", url: "lien direct", fichier: "fichier" }[v.type] || v.type;
   }
   function cssEscape(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&"); }
+  /** Affiche une source lisible (les data-URI et liens très longs sont abrégés). */
+  function shortSrc(src) {
+    src = String(src || "");
+    if (src.startsWith("data:")) {
+      const m = src.match(/^data:([^;,]+)/);
+      return (m ? m[1] : "data") + " (fichier intégré)";
+    }
+    return src.length > 80 ? src.slice(0, 77) + "…" : src;
+  }
   function setBusy(btn, busy) {
     if (!btn) return;
     btn.disabled = busy;

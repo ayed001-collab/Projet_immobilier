@@ -370,6 +370,13 @@ pre.mermaid {
 }
 .admin-visibility__label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--ink-soft); }
 
+.admin-formats {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
+}
+
+.formats__label--none { color: var(--ink-soft); font-weight: 400; text-transform: none; letter-spacing: 0; font-style: italic; }
+
 .admin-grid { display: grid; grid-template-columns: 1fr 160px; gap: 14px; margin-bottom: 12px; }
 .admin-card label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--cap-navy); }
 .admin-card input[type="text"], .admin-card input[type="url"], .admin-card input[type="file"] {

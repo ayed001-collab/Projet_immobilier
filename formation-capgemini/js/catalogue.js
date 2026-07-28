@@ -145,27 +145,40 @@ FC.catalogue = (function () {
       </article>`;
   }
 
-  /** Carte "Fondamentaux" : deux formats de restitution (vidéo / page web). */
+  /** Carte "Fondamentaux" : deux formats de restitution (vidéo / page web).
+   *  Chaque bouton peut être masqué indépendamment par l'admin. */
   function cardFondamental(t) {
     const bc = FC.data.breadcrumb(t);
     const f = FC.data.formats(t);
     const video = FC.data.getVideo(t);
+    const showVideoBtn = FC.data.videoButtonVisible(t);
+    const showPageBtn = FC.data.pageButtonVisible(t);
 
-    const btnVideo = f.video
-      ? `<button class="fmt fmt--video" data-goto="#/video/${E(t.id)}">
-           <span class="fmt__ico">▶</span>
-           <span class="fmt__txt">Vidéo de formation${video && video.duree ? ` · ${E(video.duree)}` : ""}</span>
-         </button>`
-      : `<span class="fmt fmt--off" title="Vidéo non disponible — à ajouter par l'admin">
-           <span class="fmt__ico">▶</span><span class="fmt__txt">Vidéo à venir</span>
-         </span>`;
+    let btnVideo = "";
+    if (showVideoBtn) {
+      btnVideo = f.video
+        ? `<button class="fmt fmt--video" data-goto="#/video/${E(t.id)}">
+             <span class="fmt__ico">▶</span>
+             <span class="fmt__txt">Vidéo de formation${video && video.duree ? ` · ${E(video.duree)}` : ""}</span>
+           </button>`
+        : `<span class="fmt fmt--off" title="Vidéo non disponible — à ajouter par l'admin">
+             <span class="fmt__ico">▶</span><span class="fmt__txt">Vidéo à venir</span>
+           </span>`;
+    }
 
-    const btnPage = f.page
+    const btnPage = (f.page && showPageBtn)
       ? `<button class="fmt fmt--page" data-goto="#/theme/${E(t.id)}">
            <span class="fmt__ico">📄</span>
            <span class="fmt__txt">Page de formation</span>
          </button>`
       : "";
+
+    const formatsHtml = (btnVideo || btnPage)
+      ? `<div class="formats">
+           <span class="formats__label">Formats :</span>
+           <div class="formats__btns">${btnVideo}${btnPage}</div>
+         </div>`
+      : `<div class="formats"><span class="formats__label formats__label--none">Aucun format disponible pour l'instant.</span></div>`;
 
     return `
       <article class="card card--dual">
@@ -174,10 +187,7 @@ FC.catalogue = (function () {
         <h4 class="card__title">${E(t.titre)}</h4>
         <p class="card__resume">${E(t.resume || "")}</p>
         <div class="card__foot"><span>⏱️ ${E(t.dureeEstimee || "—")}</span></div>
-        <div class="formats">
-          <span class="formats__label">Formats :</span>
-          <div class="formats__btns">${btnVideo}${btnPage}</div>
-        </div>
+        ${formatsHtml}
       </article>`;
   }
 

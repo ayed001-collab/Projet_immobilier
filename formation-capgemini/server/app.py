@@ -193,18 +193,38 @@ def list_formations():
 
 @app.put("/api/formations/{theme_id}", dependencies=[Depends(require_auth)])
 def set_formation_status(theme_id: str, payload: dict):
-    """Définit le statut d'une formation : visible / hidden / deleted."""
-    status = (payload or {}).get("status", "visible")
-    if status not in _ALLOWED_STATUS:
-        raise HTTPException(status_code=400, detail="Statut invalide.")
+    """Met à jour (fusion) l'état d'une formation :
+       - status : visible / hidden / deleted
+       - videoHidden / pageHidden : masquer les boutons de format (fondamentaux)
+       Seuls les champs fournis sont modifiés. L'entrée par défaut (visible,
+       aucun format masqué) n'est pas stockée."""
+    payload = payload or {}
     with _lock:
         cfg = load_formations()
-        if status == "visible":
-            cfg.pop(theme_id, None)          # visible = état par défaut, pas de surcharge
+        entry = dict(cfg.get(theme_id, {}))
+
+        if "status" in payload:
+            status = payload["status"]
+            if status not in _ALLOWED_STATUS:
+                raise HTTPException(status_code=400, detail="Statut invalide.")
+            if status == "visible":
+                entry.pop("status", None)     # visible = défaut
+            else:
+                entry["status"] = status
+
+        for flag in ("videoHidden", "pageHidden"):
+            if flag in payload:
+                if payload[flag]:
+                    entry[flag] = True
+                else:
+                    entry.pop(flag, None)     # False = défaut
+
+        if entry:
+            cfg[theme_id] = entry
         else:
-            cfg[theme_id] = {"status": status}
+            cfg.pop(theme_id, None)           # entrée entièrement par défaut -> supprimée
         save_formations(cfg)
-    return {"status": status}
+    return {"entry": entry}
 
 
 @app.put("/api/videos/{theme_id}", dependencies=[Depends(require_auth)])

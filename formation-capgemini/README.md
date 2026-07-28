@@ -199,6 +199,15 @@ Les statuts sont persistés **côté serveur** (mode connecté, valable pour tou
 en **localStorage** (mode local). Une formation `hidden` reste atteignable par lien direct
 (non listée) ; une formation `deleted` est bloquée aussi en accès direct.
 
+Pour les thèmes **Fondamentaux** (à double format), l'admin peut en plus **afficher/masquer
+indépendamment** chaque bouton de restitution proposé aux utilisateurs :
+
+- **bouton « Vidéo de formation »** (drapeau `videoHidden`) ;
+- **bouton « Page de formation »** (drapeau `pageHidden`).
+
+Ces drapeaux se combinent avec le statut de visibilité et sont envoyés à
+`PUT /api/formations/{themeId}` (fusion des champs fournis).
+
 ### Authentification de l'espace admin 🔒
 
 Seules les routes d'**écriture** (upload, association, suppression) sont protégées ; la

@@ -139,28 +139,46 @@ FC.data = (function () {
     _formations = readLocalForm();
   }
 
+  const _entry = (theme) => _formations[typeof theme === "string" ? theme : theme.id] || {};
+
   /** Statut d'un thème : "visible" (défaut), "hidden" ou "deleted". */
-  function themeStatus(theme) {
-    const id = typeof theme === "string" ? theme : theme.id;
-    return (_formations[id] && _formations[id].status) || "visible";
-  }
+  function themeStatus(theme) { return _entry(theme).status || "visible"; }
   /** Visible dans l'espace utilisateur ? */
   const isVisibleToUsers = (theme) => themeStatus(theme) === "visible";
+  /** Le bouton "Vidéo de formation" est-il affiché pour les utilisateurs ? (défaut oui) */
+  const videoButtonVisible = (theme) => !_entry(theme).videoHidden;
+  /** Le bouton "Page de formation" est-il affiché pour les utilisateurs ? (défaut oui) */
+  const pageButtonVisible = (theme) => !_entry(theme).pageHidden;
 
-  /** Change le statut d'un thème (masquer / supprimer / réafficher). */
-  async function setFormationStatus(themeId, status) {
+  /** Mise à jour partielle (fusion) de l'état d'un thème. patch peut contenir
+   *  { status, videoHidden, pageHidden }. */
+  async function updateFormation(themeId, patch) {
     if (_apiAvailable) {
       const res = await fetch(API_BASE + "/formations/" + encodeURIComponent(themeId), {
         method: "PUT",
         headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(patch),
       });
-      if (!res.ok) throw await httpError(res, "Échec de la mise à jour du statut");
+      if (!res.ok) throw await httpError(res, "Échec de la mise à jour");
+      const entry = (await res.json()).entry || {};
+      if (Object.keys(entry).length) _formations[themeId] = entry; else delete _formations[themeId];
+      return;
     }
-    if (status === "visible") delete _formations[themeId];
-    else _formations[themeId] = { status };
-    if (!_apiAvailable) writeLocalForm();
+    // Mode local : fusion + normalisation.
+    const entry = Object.assign({}, _formations[themeId]);
+    if ("status" in patch) {
+      if (patch.status === "visible") delete entry.status; else entry.status = patch.status;
+    }
+    ["videoHidden", "pageHidden"].forEach((f) => {
+      if (f in patch) { if (patch[f]) entry[f] = true; else delete entry[f]; }
+    });
+    if (Object.keys(entry).length) _formations[themeId] = entry; else delete _formations[themeId];
+    writeLocalForm();
   }
+
+  const setFormationStatus = (themeId, status) => updateFormation(themeId, { status });
+  const setVideoButtonVisible = (themeId, visible) => updateFormation(themeId, { videoHidden: !visible });
+  const setPageButtonVisible = (themeId, visible) => updateFormation(themeId, { pageHidden: !visible });
 
   /* ---- Authentification admin (mode connecté) ---------------------------- */
   const authRequired = () => _authRequired;
@@ -315,5 +333,6 @@ FC.data = (function () {
     isConnected, getOverrides, setVideoUrl, uploadVideoFile, removeVideo,
     authRequired, isAuthed, login, logout,
     themeStatus, isVisibleToUsers, setFormationStatus,
+    videoButtonVisible, pageButtonVisible, setVideoButtonVisible, setPageButtonVisible,
   };
 })();
