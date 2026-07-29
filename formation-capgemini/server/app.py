@@ -74,7 +74,7 @@ _lock = threading.Lock()
 # À défaut, des valeurs aléatoires sont générées au démarrage et affichées.
 TOKEN_TTL = int(os.environ.get("FORMATION_TOKEN_TTL", 8 * 3600))  # 8 h par défaut
 
-ADMIN_PASSWORD = os.environ.get("FORMATION_ADMIN_PASSWORD")
+ADMIN_PASSWORD = (os.environ.get("FORMATION_ADMIN_PASSWORD") or "").strip()
 if not ADMIN_PASSWORD:
     ADMIN_PASSWORD = secrets.token_urlsafe(9)
     print("\n" + "=" * 66)
@@ -82,6 +82,9 @@ if not ADMIN_PASSWORD:
     print("      " + ADMIN_PASSWORD)
     print("  Définissez FORMATION_ADMIN_PASSWORD pour fixer votre propre mot de passe.")
     print("=" * 66 + "\n")
+else:
+    print(f"  Espace admin : mot de passe défini via FORMATION_ADMIN_PASSWORD "
+          f"(longueur {len(ADMIN_PASSWORD)}).")
 
 _secret_env = os.environ.get("FORMATION_SECRET")
 SECRET = (_secret_env or secrets.token_urlsafe(32)).encode("utf-8")
@@ -194,8 +197,10 @@ def health():
 @app.post("/api/login")
 def login(payload: dict):
     """Échange un mot de passe contre un jeton de session signé."""
-    password = (payload or {}).get("password", "")
-    if not hmac.compare_digest(str(password), ADMIN_PASSWORD):
+    password = str((payload or {}).get("password", "")).strip()
+    # Comparaison en octets (temps constant) : tolère les accents et évite
+    # l'échec silencieux dû à un espace / retour-ligne collé dans la variable.
+    if not hmac.compare_digest(password.encode("utf-8"), ADMIN_PASSWORD.encode("utf-8")):
         raise HTTPException(status_code=401, detail="Mot de passe incorrect.")
     return {"token": make_token(), "expiresIn": TOKEN_TTL}
 
