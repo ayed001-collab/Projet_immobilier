@@ -4,7 +4,7 @@
     "sousTitre": "Plate-forme de formation à destination des acteurs de la Bancassurance",
     "version": "1.0.0",
     "miseAJour": "2026-07-28",
-    "description": "Catalogue de thèmes de formation organisé par domaine, sous-domaine et thème. Chaque thème est qualifié par un niveau (conceptuel / spécialisé) et un type (connaissance générale / acte de gestion). Les contenus sont volontairement pédagogiques et doivent être confrontés à la documentation contractuelle et réglementaire en vigueur avant toute application opérationnelle.",
+    "description": "Vous êtes sur une plateforme dédiée au développement des compétences en Assurance, Épargne et Retraite. Elle propose des contenus de formation structurés, des parcours progressifs et un espace de veille sectorielle réunissant une sélection d’articles pertinents pour suivre les tendances, innovations et évolutions du secteur.",
     "avertissement": "Contenu à visée pédagogique. Les seuils, taux et références réglementaires sont donnés à titre indicatif et peuvent évoluer : se référer aux textes officiels et aux procédures internes en vigueur."
   },
   "_comment_niveaux": "Taxonomie des niveaux : 'conceptuel' = connaissances générales / socle ; 'specialise' = acte de gestion opérationnel.",
