@@ -23,7 +23,7 @@ FC.video = (function () {
         <header class="fiche__header">
           <div class="badges">${FC.ui.badges(theme)}</div>
           <h1>🎬 ${E(theme.titre)}</h1>
-          <div class="meta"><span>Vidéo de formation${v && v.duree ? ` · ${E(v.duree)}` : ""}</span></div>
+          <div class="meta"><span>Vidéo de formation<span class="fmt__dur">${v && FC.ui.isRealDuree(v.duree) ? ` · ${E(v.duree)}` : ""}</span></span></div>
         </header>
 
         <section class="section">
@@ -40,6 +40,19 @@ FC.video = (function () {
     if (back) back.addEventListener("click", () => { location.hash = "#/fondamentaux"; });
     const goPage = container.querySelector("#go-page");
     if (goPage) goPage.addEventListener("click", () => { location.hash = "#/theme/" + theme.id; });
+
+    // Durée non renseignée : la lire depuis la vidéo effectivement chargée.
+    if (v && !FC.ui.isRealDuree(v.duree) && FC.ui.isDetectable(v)) {
+      const durSpan = container.querySelector(".meta .fmt__dur");
+      const vid = container.querySelector("video.video-embed");
+      const fill = (sec) => { const d = FC.ui.fmtDuration(sec); if (d && durSpan) durSpan.textContent = " · " + d; };
+      if (vid) {
+        if (vid.readyState >= 1 && vid.duration) fill(vid.duration);
+        else vid.addEventListener("loadedmetadata", () => fill(vid.duration), { once: true });
+      } else {
+        FC.ui.detectDuration(v.playSrc).then((d) => { if (d && durSpan) durSpan.textContent = " · " + d; });
+      }
+    }
   }
 
   /** Construit le lecteur selon le type de source. */

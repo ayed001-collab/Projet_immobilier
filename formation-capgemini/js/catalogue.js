@@ -156,14 +156,21 @@ FC.catalogue = (function () {
 
     let btnVideo = "";
     if (showVideoBtn) {
-      btnVideo = f.video
-        ? `<button class="fmt fmt--video" data-goto="#/video/${E(t.id)}">
+      if (f.video) {
+        const real = FC.ui.isRealDuree(video && video.duree);
+        // Durée affichée si réelle ; sinon détection auto à partir du média.
+        const durAttr = (!real && FC.ui.isDetectable(video) && video.playSrc)
+          ? ` data-detect="${E(video.playSrc)}"` : "";
+        const durTxt = real ? ` · ${E(video.duree)}` : "";
+        btnVideo = `<button class="fmt fmt--video" data-goto="#/video/${E(t.id)}">
              <span class="fmt__ico">▶</span>
-             <span class="fmt__txt">Vidéo de formation${video && video.duree ? ` · ${E(video.duree)}` : ""}</span>
-           </button>`
-        : `<span class="fmt fmt--off" title="Vidéo non disponible — à ajouter par l'admin">
+             <span class="fmt__txt">Vidéo de formation<span class="fmt__dur"${durAttr}>${durTxt}</span></span>
+           </button>`;
+      } else {
+        btnVideo = `<span class="fmt fmt--off" title="Vidéo non disponible — à ajouter par l'admin">
              <span class="fmt__ico">▶</span><span class="fmt__txt">Vidéo à venir</span>
            </span>`;
+      }
     }
 
     const btnPage = (f.page && showPageBtn)
@@ -194,12 +201,17 @@ FC.catalogue = (function () {
   /* ------------------------------------------------------------- Interactions */
 
   function wireCards(box) {
-    // Onglets (délégué sur le conteneur de vue).
     // Boutons/cartes portant un data-goto -> navigation par hash.
     box.querySelectorAll("[data-goto]").forEach((el) => {
       const handler = (e) => { e.stopPropagation(); location.hash = el.getAttribute("data-goto"); };
       el.addEventListener("click", handler);
       el.addEventListener("keydown", (e) => { if (e.key === "Enter") handler(e); });
+    });
+
+    // Détection auto de la durée (vidéos sans durée réelle enregistrée).
+    box.querySelectorAll(".fmt__dur[data-detect]").forEach((span) => {
+      const src = span.getAttribute("data-detect");
+      FC.ui.detectDuration(src).then((d) => { if (d) span.textContent = " · " + d; });
     });
   }
 

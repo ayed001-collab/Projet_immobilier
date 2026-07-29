@@ -225,17 +225,26 @@ FC.admin = (function () {
     // ---- Vidéo (fondamentaux) ----
     on('[data-a="save"]', async () => {
       const titre = get("titre").value.trim();
-      const duree = get("duree").value.trim();
+      let duree = get("duree").value.trim();
       const url = get("src").value.trim();
       const file = get("file").files && get("file").files[0];
       const btn = card.querySelector('[data-a="save"]');
       try {
         setBusy(btn, true);
         if (file) {
+          // Durée non saisie -> lue automatiquement dans le fichier chargé.
+          if (!FC.ui.isRealDuree(duree)) {
+            const tmp = URL.createObjectURL(file);
+            duree = await FC.ui.detectDuration(tmp);
+            URL.revokeObjectURL(tmp);
+          }
           await FC.data.uploadVideoFile(t.id, file, { titre, duree });
           toast(card, FC.data.isConnected() ? "Vidéo uploadée et enregistrée sur le serveur." : "Fichier chargé pour cette session (mode local).");
         } else if (url) {
-          await FC.data.setVideoUrl(t.id, { type: detectType(url), src: url, titre, duree });
+          const type = detectType(url);
+          // Lien direct (.mp4/.webm) : durée lue automatiquement si non saisie.
+          if (!FC.ui.isRealDuree(duree) && type === "url") duree = await FC.ui.detectDuration(url);
+          await FC.data.setVideoUrl(t.id, { type, src: url, titre, duree });
           toast(card, "Vidéo enregistrée.");
         } else {
           toast(card, "Renseignez un lien vidéo ou sélectionnez un fichier.", true); return;
