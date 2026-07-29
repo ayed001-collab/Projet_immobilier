@@ -331,6 +331,7 @@ FC.admin = (function () {
           <label>Image (URL) <input type="url" data-nf="imageUrl" placeholder="https://…/image.jpg" /></label>
           <label>Date de publication <input type="date" data-nf="publishedAt" /></label>
         </div>
+        <div class="news-img-preview" id="news-img-preview"></div>
         <label class="news-pub"><input type="checkbox" data-nf="isPublished" /> Publier l'article (visible par les utilisateurs)</label>
 
         <div class="admin-card__actions" style="margin-top:14px">
@@ -367,6 +368,21 @@ FC.admin = (function () {
     nf(body, "imageUrl").value = a.imageUrl || "";
     nf(body, "publishedAt").value = (a.publishedAt || "").slice(0, 10);
     nf(body, "isPublished").checked = !!a.isPublished;
+    updateImgPreview(body);
+  }
+
+  /** Aperçu de l'image saisie/récupérée (repli si l'image ne charge pas). */
+  function updateImgPreview(body) {
+    const box = body.querySelector("#news-img-preview");
+    if (!box) return;
+    const u = nf(body, "imageUrl").value.trim();
+    if (!u) { box.innerHTML = ""; return; }
+    box.innerHTML = `<span class="news-img-preview__label">Aperçu</span><img src="${E(u)}" alt="aperçu" referrerpolicy="no-referrer" /><span class="news-img-preview__err" style="display:none">Image indisponible à cette URL.</span>`;
+    const img = box.querySelector("img");
+    img.addEventListener("error", () => {
+      img.style.display = "none";
+      box.querySelector(".news-img-preview__err").style.display = "";
+    }, { once: true });
   }
   function resetForm(body) {
     _newsEditingId = null;
@@ -394,7 +410,9 @@ FC.admin = (function () {
         if (m.imageUrl) nf(body, "imageUrl").value = m.imageUrl;
         if (m.source) nf(body, "source").value = m.source;
         if (m.publishedAt) nf(body, "publishedAt").value = (m.publishedAt || "").slice(0, 10);
-        newsToast(body, "Informations récupérées — vérifiez puis publiez.");
+        updateImgPreview(body);
+        newsToast(body, m.imageUrl ? "Informations récupérées (image comprise) — vérifiez puis publiez."
+                                   : "Infos récupérées. Aucune image trouvée : ajoutez une URL d'image si besoin.");
       } catch (err) {
         if (err.auth) { relogin(); return; }
         // Repli : pré-remplir au moins la source depuis l'URL, saisie manuelle.
@@ -420,6 +438,7 @@ FC.admin = (function () {
     });
 
     body.querySelector('[data-na="cancel"]').addEventListener("click", () => resetForm(body));
+    nf(body, "imageUrl").addEventListener("input", () => updateImgPreview(body));
   }
 
   async function renderNewsAdminList(body) {
@@ -432,6 +451,11 @@ FC.admin = (function () {
 
     listEl.innerHTML = `<h3 style="margin:22px 0 12px;color:var(--cap-navy)">Articles (${items.length})</h3>` +
       items.map(newsRow).join("");
+
+    // Repli d'image sur les vignettes (image externe indisponible).
+    listEl.querySelectorAll("img[data-fallback]").forEach((im) => {
+      im.addEventListener("error", () => { if (im.src !== FC.news.FALLBACK_IMG) im.src = FC.news.FALLBACK_IMG; }, { once: true });
+    });
 
     items.forEach((a) => {
       const card = listEl.querySelector(`.news-admin-card[data-id="${cssEscape(a.id)}"]`);
@@ -463,7 +487,7 @@ FC.admin = (function () {
     const meta = [a.source ? E(a.source) : "", (a.publishedAt || "").slice(0, 10)].filter(Boolean).join(" · ");
     return `
       <section class="news-admin-card" data-id="${E(a.id)}">
-        <img class="news-admin-card__thumb" src="${img}" alt="" />
+        <img class="news-admin-card__thumb" src="${img}" alt="" referrerpolicy="no-referrer" data-fallback="1" />
         <div class="news-admin-card__body">
           <div class="admin-card__head" style="margin:0">
             <div>

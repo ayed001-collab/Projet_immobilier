@@ -80,7 +80,7 @@ FC.news = (function () {
     return `
       <article class="news-card">
         <div class="news-card__media">
-          <img class="news-card__img" src="${img}" alt="" loading="lazy" />
+          <img class="news-card__img" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" />
         </div>
         <div class="news-card__body">
           ${meta ? `<div class="news-card__meta">${meta}</div>` : ""}

@@ -437,6 +437,10 @@ class _MetaParser(HTMLParser):
             key = (a.get("property") or a.get("name") or "").lower()
             if key and "content" in a and key not in self.meta:
                 self.meta[key] = a["content"].strip()
+        elif tag == "link":
+            rel = (a.get("rel") or "").lower()
+            if "image_src" in rel and a.get("href") and "link:image_src" not in self.meta:
+                self.meta["link:image_src"] = a["href"].strip()
         elif tag == "title":
             self._in_title = True
 
@@ -457,9 +461,10 @@ def parse_metadata(html: str, url: str) -> dict:
     except Exception:
         pass
     m = p.meta
-    title = m.get("og:title") or (p.title_text or "").strip()
-    description = m.get("og:description") or m.get("description") or ""
-    image = m.get("og:image") or m.get("og:image:url") or ""
+    title = m.get("og:title") or m.get("twitter:title") or (p.title_text or "").strip()
+    description = m.get("og:description") or m.get("twitter:description") or m.get("description") or ""
+    image = (m.get("og:image") or m.get("og:image:url") or m.get("og:image:secure_url")
+             or m.get("twitter:image") or m.get("twitter:image:src") or m.get("link:image_src") or "")
     source = m.get("og:site_name") or (urlparse(url).hostname or "").replace("www.", "")
     published = m.get("article:published_time") or m.get("og:article:published_time") or ""
     if image:

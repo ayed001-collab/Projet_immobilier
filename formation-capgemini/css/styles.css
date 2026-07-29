@@ -343,6 +343,11 @@ pre.mermaid {
 /* ---------------------------------------------------------------- Actualités (admin) */
 .admin-subnav { margin-bottom: 18px; border-bottom: 1px solid var(--line); }
 .news-form h3 { margin: 0 0 14px; color: var(--cap-navy); font-size: 17px; }
+.news-img-preview { margin: 0 0 12px; display: flex; flex-direction: column; gap: 4px; }
+.news-img-preview:empty { display: none; }
+.news-img-preview__label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--ink-soft); }
+.news-img-preview img { max-width: 260px; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); background: #eef2f6; }
+.news-img-preview__err { font-size: 13px; color: var(--cap-accent); }
 .news-pub { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--cap-navy); font-weight: 600; }
 .news-pub input { width: 16px; height: 16px; }
 .news-admin-card {
