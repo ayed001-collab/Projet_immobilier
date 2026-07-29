@@ -185,6 +185,33 @@ les fichiers uploadés sont stockés dans `assets/videos/` et la configuration d
 | `DELETE` | `/api/videos/{themeId}` | 🔒 | Retirer la vidéo (et supprimer le fichier uploadé) |
 | `GET` | `/api/formations` | — | Statut de visibilité des formations (lecture, publique) |
 | `PUT` | `/api/formations/{themeId}` | 🔒 | Définir le statut : `visible` / `hidden` / `deleted` |
+| `GET` | `/api/news` | — | Articles publiés (page utilisateur), du plus récent au plus ancien |
+| `GET` | `/api/admin/news` | 🔒 | Tous les articles (admin) |
+| `POST` | `/api/news` | 🔒 | Créer un article (dédup sur l'URL → 409) |
+| `PUT` | `/api/news/{id}` | 🔒 | Modifier / (dé)publier un article |
+| `DELETE` | `/api/news/{id}` | 🔒 | Supprimer un article |
+| `POST` | `/api/news/fetch-metadata` | 🔒 | Récupérer titre/description/image/source depuis une URL (côté serveur) |
+
+### Actualités & Veille du secteur
+
+Onglet **« Veille sectorielle »** (écran d'accueil) : les articles **publiés** s'affichent en cartes
+(image, titre, description, source, date, bouton « Lire l'article » ouvrant la source dans un
+nouvel onglet). Le contenu de l'article n'est jamais copié dans la plate-forme.
+
+Depuis l'espace admin → **« Gestion des actualités »**, l'administrateur ajoute un article à partir
+de son **URL** : en mode connecté, le serveur récupère les métadonnées Open Graph
+(`og:title`, `og:description`, `og:image`, `og:site_name`, avec repli sur les balises HTML) —
+**côté serveur pour éviter les problèmes de CORS**. Les champs restent **toujours modifiables**
+avant publication, et la saisie manuelle reste possible si la récupération échoue.
+
+- **Sécurité** : URLs `http(s)` uniquement, timeout, taille limitée, blocage des cibles internes
+  (localhost / IP privées) avant toute requête serveur ; le JavaScript du site externe n'est jamais
+  exécuté.
+- **Images** : seule l'URL de l'`og:image` est stockée (pas de téléchargement) ; une image générique
+  « Actualités Assurance » sert de repli si l'image est absente ou indisponible.
+- **Performance** : les métadonnées ne sont récupérées qu'à l'ajout ; l'affichage lit ensuite la base.
+- **Mode local** (sans backend) : stockage `localStorage` et saisie manuelle (la récupération auto
+  nécessite le backend).
 
 ### Visibilité des formations (masquer / supprimer)
 

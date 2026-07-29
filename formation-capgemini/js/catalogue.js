@@ -15,7 +15,6 @@ FC.catalogue = (function () {
   function render(container, tab) {
     if (tab) state.tab = tab;
     const meta = FC.data.meta();
-    const parcours = FC.data.parcours();
     const current = FC.data.parcoursById(state.tab);
 
     container.innerHTML = `
@@ -26,17 +25,7 @@ FC.catalogue = (function () {
         </div>
       </section>
 
-      <div class="tabs-bar">
-        <div class="container">
-          <nav class="tabs" role="tablist">
-            ${parcours.map((p) => `
-              <a class="tab ${p.id === state.tab ? "active" : ""}" role="tab"
-                 href="#/${p.id}" data-tab="${E(p.id)}">
-                ${E(p.libelle)}
-              </a>`).join("")}
-          </nav>
-        </div>
-      </div>
+      ${FC.ui.tabsBar(state.tab)}
 
       <main class="container">
         <p class="parcours-accroche">${E(current.accroche)}</p>

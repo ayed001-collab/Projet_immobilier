@@ -325,6 +325,112 @@ FC.data = (function () {
     };
   }
 
+  /* ---------------------------------------------------------------------
+     ACTUALITÉS & VEILLE DU SECTEUR
+     Mode connecté : persistance serveur (news.json) + récupération des
+     métadonnées côté serveur (anti-CORS). Mode local : localStorage, la
+     récupération auto n'est pas disponible (saisie manuelle).
+     --------------------------------------------------------------------- */
+  const LS_NEWS = "fc.news";
+  const readNews = () => { try { return JSON.parse(localStorage.getItem(LS_NEWS) || "[]"); } catch (e) { return []; } };
+  const writeNews = (arr) => localStorage.setItem(LS_NEWS, JSON.stringify(arr));
+  const normUrl = (u) => (u || "").trim().replace(/\/+$/, "");
+
+  /** URL http(s) valide ? (validation client, complète celle du serveur). */
+  function isValidHttpUrl(u) {
+    try { const p = new URL((u || "").trim()); return p.protocol === "http:" || p.protocol === "https:"; }
+    catch (e) { return false; }
+  }
+  /** La récupération automatique des métadonnées est-elle disponible ? (backend requis) */
+  const metadataAvailable = () => _apiAvailable;
+
+  function _sortByDate(arr, key) {
+    return arr.slice().sort((a, b) => String(b[key] || b.createdAt || "").localeCompare(String(a[key] || a.createdAt || "")));
+  }
+
+  /** Articles publiés (page utilisateur), du plus récent au plus ancien. */
+  async function newsPublic() {
+    if (_apiAvailable) {
+      try { const r = await fetch(API_BASE + "/news", { cache: "no-cache" }); if (r.ok) return (await r.json()).articles || []; } catch (e) {}
+      return [];
+    }
+    return _sortByDate(readNews().filter((a) => a.isPublished), "publishedAt");
+  }
+
+  /** Tous les articles (admin). */
+  async function newsAll() {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/admin/news", { headers: authHeaders(), cache: "no-cache" });
+      if (!r.ok) throw await httpError(r, "Chargement des actualités impossible");
+      return (await r.json()).articles || [];
+    }
+    return _sortByDate(readNews(), "createdAt");
+  }
+
+  /** Récupère les métadonnées d'une URL (serveur). Indisponible en mode local. */
+  async function newsFetchMetadata(url) {
+    if (!_apiAvailable) { const e = new Error("Récupération automatique indisponible sans backend — saisie manuelle."); e.noBackend = true; throw e; }
+    const r = await fetch(API_BASE + "/news/fetch-metadata", {
+      method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+      body: JSON.stringify({ url }),
+    });
+    if (!r.ok) throw await httpError(r, "Récupération des métadonnées impossible");
+    return await r.json();
+  }
+
+  async function newsCreate(data) {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/news", {
+        method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(data),
+      });
+      if (!r.ok) throw await httpError(r, "Ajout de l'article impossible");
+      return await r.json();
+    }
+    // Mode local
+    const items = readNews();
+    if (items.some((a) => normUrl(a.url) === normUrl(data.url))) throw new Error("Cet article a déjà été ajouté.");
+    const article = {
+      id: "loc-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title: (data.title || "").trim(), description: (data.description || "").trim(),
+      url: normUrl(data.url), imageUrl: (data.imageUrl || "").trim(), source: (data.source || "").trim(),
+      publishedAt: (data.publishedAt || "").trim(), isPublished: !!data.isPublished,
+      createdAt: new Date().toISOString(),
+    };
+    items.push(article); writeNews(items); return article;
+  }
+
+  async function newsUpdate(id, patch) {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/news/" + encodeURIComponent(id), {
+        method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(patch),
+      });
+      if (!r.ok) throw await httpError(r, "Modification impossible");
+      return await r.json();
+    }
+    const items = readNews();
+    const art = items.find((a) => a.id === id);
+    if (!art) throw new Error("Article introuvable.");
+    if (patch.url != null) {
+      const nu = normUrl(patch.url);
+      if (items.some((a) => a.id !== id && normUrl(a.url) === nu)) throw new Error("Cet article a déjà été ajouté.");
+      art.url = nu;
+    }
+    ["title", "description", "imageUrl", "source", "publishedAt"].forEach((k) => { if (patch[k] != null) art[k] = String(patch[k]).trim(); });
+    if (patch.isPublished != null) art.isPublished = !!patch.isPublished;
+    writeNews(items); return art;
+  }
+
+  async function newsDelete(id) {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/news/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+      if (!r.ok) throw await httpError(r, "Suppression impossible");
+      return;
+    }
+    writeNews(readNews().filter((a) => a.id !== id));
+  }
+
   return {
     load, meta, themes, domaines, themeById, domaineById, sousDomaineById,
     niveauLibelle, typeLibelle, filter, breadcrumb,
@@ -334,5 +440,7 @@ FC.data = (function () {
     authRequired, isAuthed, login, logout,
     themeStatus, isVisibleToUsers, setFormationStatus,
     videoButtonVisible, pageButtonVisible, setVideoButtonVisible, setPageButtonVisible,
+    isValidHttpUrl, metadataAvailable,
+    newsPublic, newsAll, newsFetchMetadata, newsCreate, newsUpdate, newsDelete,
   };
 })();

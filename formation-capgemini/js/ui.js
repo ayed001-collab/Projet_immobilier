@@ -33,6 +33,21 @@ FC.ui = (function () {
     return html;
   }
 
+  /**
+   * Barre d'onglets principale de l'écran d'accueil, partagée entre le
+   * catalogue et la page Veille : deux parcours + « Veille sectorielle ».
+   * @param {string} active - id de l'onglet actif : parcours id ou "actualites".
+   */
+  function tabsBar(active) {
+    const items = FC.data.parcours().map((p) => ({ href: "#/" + p.id, id: p.id, label: p.libelle }));
+    items.push({ href: "#/actualites", id: "actualites", label: "Veille sectorielle" });
+    return `<div class="tabs-bar"><div class="container">
+      <nav class="tabs" role="tablist">
+        ${items.map((it) => `<a class="tab ${it.id === active ? "active" : ""}" role="tab" href="${esc(it.href)}">${esc(it.label)}</a>`).join("")}
+      </nav>
+    </div></div>`;
+  }
+
   /* ----------------------------------------------------------- Durées vidéo */
 
   /** Formate une durée en secondes -> "M:SS" ou "H:MM:SS". "" si invalide. */
@@ -81,5 +96,5 @@ FC.ui = (function () {
     });
   }
 
-  return { esc, badgeNiveau, badgeType, badges, fmtDuration, isRealDuree, isDetectable, detectDuration };
+  return { esc, badgeNiveau, badgeType, badges, tabsBar, fmtDuration, isRealDuree, isDetectable, detectDuration };
 })();

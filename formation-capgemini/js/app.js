@@ -37,10 +37,19 @@ window.FC = window.FC || {};
       }
     }
 
-    // Espace admin : #/admin
+    // Actualités & veille du secteur : #/actualites
+    if (head === "actualites") {
+      document.title = "Actualités & Veille du secteur";
+      FC.news.render(view);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    // Espace admin : #/admin (formations) | #/admin/actualites (actualités)
     if (head === "admin") {
-      document.title = "Espace admin — Vidéos";
-      FC.admin.render(view);
+      const adminView = parts[1] === "actualites" ? "news" : "formations";
+      document.title = "Espace admin";
+      FC.admin.render(view, adminView);
       window.scrollTo(0, 0);
       return;
     }

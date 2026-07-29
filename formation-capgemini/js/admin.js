@@ -15,12 +15,14 @@ window.FC = window.FC || {};
 
 FC.admin = (function () {
   const E = (s) => FC.ui.esc(s);
-  let _view = null; // conteneur principal, pour re-rendre après (dé)connexion
+  let _view = null;                 // conteneur principal, pour re-rendre après (dé)connexion
+  let _adminView = "formations";    // "formations" | "news"
 
   const STATUS_LABEL = { visible: "Visible", hidden: "Masquée", deleted: "Supprimée" };
 
-  function render(container) {
+  function render(container, view) {
     _view = container;
+    if (view) _adminView = view;
     const connected = FC.data.isConnected();
 
     // Mode connecté avec authentification exigée : écran de connexion préalable.
@@ -31,8 +33,7 @@ FC.admin = (function () {
     const note = connected
       ? `<div class="admin-note admin-note--ok">
            <strong>Mode connecté (backend actif).</strong>
-           Les modifications (visibilité des formations et vidéos) sont <em>enregistrées sur le
-           serveur</em> et <em>visibles par tous les utilisateurs</em>.
+           Les modifications sont <em>enregistrées sur le serveur</em> et <em>visibles par tous les utilisateurs</em>.
          </div>`
       : `<div class="admin-note">
            <strong>Mode local (sans backend).</strong>
@@ -44,29 +45,41 @@ FC.admin = (function () {
       ? `<span class="admin-status admin-status--on">● Connecté</span>`
       : `<span class="admin-status admin-status--off">○ Local</span>`;
 
+    const isNews = _adminView === "news";
+    const subnav = `
+      <nav class="tabs admin-subnav" role="tablist">
+        <a class="tab ${!isNews ? "active" : ""}" href="#/admin">Formations</a>
+        <a class="tab ${isNews ? "active" : ""}" href="#/admin/actualites">Gestion des actualités</a>
+      </nav>`;
+
     container.innerHTML = `
       <main class="container fiche">
         <nav class="breadcrumb"><a href="#/fondamentaux">Catalogue</a><span class="sep">›</span><span class="current">Espace admin</span></nav>
 
         <header class="fiche__header">
           <div class="badges"><span class="badge badge--pilote">Admin</span> ${modeBadge}</div>
-          <h1>🛠️ Gestion des formations</h1>
-          <div class="meta"><span>Masquer, supprimer ou restaurer une formation dans l'espace utilisateur, et gérer les vidéos des fondamentaux.</span></div>
+          <h1>🛠️ Espace administrateur</h1>
+          <div class="meta"><span>${isNews
+            ? "Gérer les articles de la veille sectorielle (ajout, modification, publication)."
+            : "Masquer, supprimer ou restaurer une formation, et gérer les vidéos des fondamentaux."}</span></div>
         </header>
 
         ${note}
+        ${subnav}
 
         <div class="admin-toolbar">
-          ${connected ? "" : `<button class="btn" id="export">⬇︎ Exporter les vidéos (JSON)</button>`}
+          ${(!connected && !isNews) ? `<button class="btn" id="export">⬇︎ Exporter les vidéos (JSON)</button>` : ""}
           ${connected && FC.data.isAuthed() ? `<span class="admin-toolbar__spacer"></span><button class="btn btn--ghost" id="logout">Se déconnecter</button>` : ""}
         </div>
 
-        <div id="admin-list"></div>
+        <div id="admin-body"></div>
 
         <span class="fiche__back" id="back">← Retour au catalogue</span>
       </main>`;
 
-    renderList(container.querySelector("#admin-list"));
+    const body = container.querySelector("#admin-body");
+    if (isNews) renderNewsAdmin(body); else renderList(body);
+
     container.querySelector("#back").addEventListener("click", () => { location.hash = "#/fondamentaux"; });
     const exp = container.querySelector("#export");
     if (exp) exp.addEventListener("click", exportConfig);
@@ -286,6 +299,187 @@ FC.admin = (function () {
     on('[data-a="delete"]', () => changeStatus("deleted",
       `Supprimer « ${t.titre} » ? Elle disparaîtra de l'espace utilisateur (restaurable depuis l'admin).`));
     on('[data-a="preview-fiche"]', () => { location.hash = "#/theme/" + t.id; });
+  }
+
+  /* ============================================================ ACTUALITÉS */
+  let _newsEditingId = null;
+
+  function renderNewsAdmin(body) {
+    const canFetch = FC.data.metadataAvailable();
+    body.innerHTML = `
+      <section class="admin-card news-form">
+        <h3 id="news-form-title">Ajouter un article</h3>
+        <div class="admin-source" style="border:0;padding:0;margin:0">
+          <label class="admin-source__url" style="flex:1">URL de l'article
+            <input type="url" data-nf="url" placeholder="https://…" autocomplete="off" />
+          </label>
+          <div class="admin-source__sep">&nbsp;</div>
+          <label class="admin-source__file" style="align-self:end">
+            <button class="btn" type="button" data-na="fetch"${canFetch ? "" : ' title="Backend requis — saisie manuelle en mode local"'}>⤓ Récupérer les infos</button>
+          </label>
+        </div>
+        ${canFetch ? "" : `<p class="schema-note" style="margin-top:8px">Mode local : la récupération automatique n'est pas disponible — renseignez les champs manuellement (la source est pré-remplie depuis l'URL).</p>`}
+
+        <div class="admin-grid" style="margin-top:14px">
+          <label>Titre <input type="text" data-nf="title" placeholder="Titre de l'article" /></label>
+          <label>Source <input type="text" data-nf="source" placeholder="Ex : France Assureurs" /></label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--cap-navy);margin-bottom:12px">Description
+          <textarea data-nf="description" rows="2" placeholder="Courte description…" style="font:inherit;font-weight:400;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe;resize:vertical"></textarea>
+        </label>
+        <div class="admin-grid">
+          <label>Image (URL) <input type="url" data-nf="imageUrl" placeholder="https://…/image.jpg" /></label>
+          <label>Date de publication <input type="date" data-nf="publishedAt" /></label>
+        </div>
+        <label class="news-pub"><input type="checkbox" data-nf="isPublished" /> Publier l'article (visible par les utilisateurs)</label>
+
+        <div class="admin-card__actions" style="margin-top:14px">
+          <button class="btn btn--primary" data-na="save">Ajouter l'article</button>
+          <button class="btn btn--ghost" data-na="cancel" style="display:none">Annuler</button>
+        </div>
+        <div class="admin-toast" id="news-toast"></div>
+      </section>
+
+      <div id="news-admin-list"><div class="empty" style="margin-top:16px">Chargement…</div></div>`;
+
+    wireNewsForm(body);
+    renderNewsAdminList(body);
+  }
+
+  function nf(body, k) { return body.querySelector(`[data-nf="${k}"]`); }
+
+  function readForm(body) {
+    return {
+      url: nf(body, "url").value.trim(),
+      title: nf(body, "title").value.trim(),
+      source: nf(body, "source").value.trim(),
+      description: nf(body, "description").value.trim(),
+      imageUrl: nf(body, "imageUrl").value.trim(),
+      publishedAt: nf(body, "publishedAt").value.trim(),
+      isPublished: nf(body, "isPublished").checked,
+    };
+  }
+  function fillForm(body, a) {
+    nf(body, "url").value = a.url || "";
+    nf(body, "title").value = a.title || "";
+    nf(body, "source").value = a.source || "";
+    nf(body, "description").value = a.description || "";
+    nf(body, "imageUrl").value = a.imageUrl || "";
+    nf(body, "publishedAt").value = (a.publishedAt || "").slice(0, 10);
+    nf(body, "isPublished").checked = !!a.isPublished;
+  }
+  function resetForm(body) {
+    _newsEditingId = null;
+    fillForm(body, {});
+    body.querySelector("#news-form-title").textContent = "Ajouter un article";
+    body.querySelector('[data-na="save"]').textContent = "Ajouter l'article";
+    body.querySelector('[data-na="cancel"]').style.display = "none";
+  }
+  function newsToast(body, msg, err) {
+    const t = body.querySelector("#news-toast");
+    t.textContent = msg; t.classList.toggle("admin-toast--err", !!err); t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 4000);
+  }
+
+  function wireNewsForm(body) {
+    body.querySelector('[data-na="fetch"]').addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const url = nf(body, "url").value.trim();
+      if (!FC.data.isValidHttpUrl(url)) { newsToast(body, "URL invalide : elle doit commencer par http:// ou https://.", true); return; }
+      try {
+        setBusy(btn, true);
+        const m = await FC.data.newsFetchMetadata(url);
+        if (m.title) nf(body, "title").value = m.title;
+        if (m.description) nf(body, "description").value = m.description;
+        if (m.imageUrl) nf(body, "imageUrl").value = m.imageUrl;
+        if (m.source) nf(body, "source").value = m.source;
+        if (m.publishedAt) nf(body, "publishedAt").value = (m.publishedAt || "").slice(0, 10);
+        newsToast(body, "Informations récupérées — vérifiez puis publiez.");
+      } catch (err) {
+        if (err.auth) { relogin(); return; }
+        // Repli : pré-remplir au moins la source depuis l'URL, saisie manuelle.
+        try { if (!nf(body, "source").value) nf(body, "source").value = new URL(url).hostname.replace("www.", ""); } catch (e2) {}
+        newsToast(body, err.noBackend ? "Récupération auto indisponible (mode local) : saisie manuelle." : (err.message || "Récupération impossible : saisie manuelle."), true);
+      } finally { setBusy(btn, false); }
+    });
+
+    body.querySelector('[data-na="save"]').addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const data = readForm(body);
+      if (!FC.data.isValidHttpUrl(data.url)) { newsToast(body, "URL invalide : elle doit commencer par http:// ou https://.", true); return; }
+      try {
+        setBusy(btn, true);
+        if (_newsEditingId) { await FC.data.newsUpdate(_newsEditingId, data); newsToast(body, "Article modifié."); }
+        else { await FC.data.newsCreate(data); newsToast(body, "Article ajouté."); }
+        resetForm(body);
+        renderNewsAdminList(body);
+      } catch (err) {
+        if (err.auth) { relogin(); return; }
+        newsToast(body, err.message || "Enregistrement impossible.", true);
+      } finally { setBusy(btn, false); }
+    });
+
+    body.querySelector('[data-na="cancel"]').addEventListener("click", () => resetForm(body));
+  }
+
+  async function renderNewsAdminList(body) {
+    const listEl = body.querySelector("#news-admin-list");
+    let items = [];
+    try { items = await FC.data.newsAll(); }
+    catch (err) { if (err.auth) { relogin(); return; } listEl.innerHTML = `<div class="empty">Chargement impossible.</div>`; return; }
+
+    if (!items.length) { listEl.innerHTML = `<div class="empty" style="margin-top:16px">Aucun article pour le moment. Ajoutez-en un ci-dessus.</div>`; return; }
+
+    listEl.innerHTML = `<h3 style="margin:22px 0 12px;color:var(--cap-navy)">Articles (${items.length})</h3>` +
+      items.map(newsRow).join("");
+
+    items.forEach((a) => {
+      const card = listEl.querySelector(`.news-admin-card[data-id="${cssEscape(a.id)}"]`);
+      if (!card) return;
+      card.querySelector('[data-na="toggle"]').addEventListener("click", async () => {
+        try { await FC.data.newsUpdate(a.id, { isPublished: !a.isPublished }); renderNewsAdminList(body); }
+        catch (err) { if (err.auth) { relogin(); return; } newsToast(body, err.message || "Erreur.", true); }
+      });
+      card.querySelector('[data-na="edit"]').addEventListener("click", () => {
+        _newsEditingId = a.id; fillForm(body, a);
+        body.querySelector("#news-form-title").textContent = "Modifier l'article";
+        body.querySelector('[data-na="save"]').textContent = "Enregistrer les modifications";
+        body.querySelector('[data-na="cancel"]').style.display = "";
+        body.querySelector(".news-form").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      card.querySelector('[data-na="del"]').addEventListener("click", async () => {
+        if (!confirm(`Supprimer l'article « ${a.title || a.url} » ?`)) return;
+        try { await FC.data.newsDelete(a.id); renderNewsAdminList(body); }
+        catch (err) { if (err.auth) { relogin(); return; } newsToast(body, err.message || "Erreur.", true); }
+      });
+    });
+  }
+
+  function newsRow(a) {
+    const img = a.imageUrl ? E(a.imageUrl) : FC.news.FALLBACK_IMG;
+    const status = a.isPublished
+      ? `<span class="admin-status admin-status--visible">Publié</span>`
+      : `<span class="admin-status admin-status--hidden">Brouillon</span>`;
+    const meta = [a.source ? E(a.source) : "", (a.publishedAt || "").slice(0, 10)].filter(Boolean).join(" · ");
+    return `
+      <section class="news-admin-card" data-id="${E(a.id)}">
+        <img class="news-admin-card__thumb" src="${img}" alt="" />
+        <div class="news-admin-card__body">
+          <div class="admin-card__head" style="margin:0">
+            <div>
+              <h4 style="margin:0 0 3px;color:var(--cap-navy)">${E(a.title || "(Sans titre)")}</h4>
+              <div class="card__crumb">${meta || "&nbsp;"}</div>
+              <div class="card__crumb" style="margin-top:2px">${E(a.url)}</div>
+            </div>
+            ${status}
+          </div>
+          <div class="admin-visibility" style="margin-top:10px;padding-top:10px">
+            <button class="btn ${a.isPublished ? "" : "btn--primary"}" data-na="toggle">${a.isPublished ? "Dépublier" : "Publier"}</button>
+            <button class="btn" data-na="edit">Modifier</button>
+            <button class="btn btn--ghost" data-na="del">Supprimer</button>
+          </div>
+        </div>
+      </section>`;
   }
 
   /** Export (mode local) : configuration vidéo prête à coller dans curriculum.json. */

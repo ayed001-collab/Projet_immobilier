@@ -26,13 +26,21 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
 import secrets
+import socket
 import threading
 import time
+import urllib.error
+import urllib.request
+import uuid
+from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,6 +54,7 @@ VIDEO_DIR = FRONTEND_ROOT / "assets" / "videos"       # fichiers servis à asset
 STORAGE_DIR = SERVER_DIR / "storage"
 CONFIG_FILE = STORAGE_DIR / "videos.json"             # mapping persistant thème -> vidéo
 FORMATIONS_FILE = STORAGE_DIR / "formations.json"     # statut de visibilité par thème
+NEWS_FILE = STORAGE_DIR / "news.json"                 # articles d'actualité (veille secteur)
 
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,6 +151,22 @@ def save_formations(cfg: dict) -> None:
     tmp = FORMATIONS_FILE.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(FORMATIONS_FILE)  # écriture atomique
+
+
+def load_news() -> list:
+    if NEWS_FILE.exists():
+        try:
+            data = json.loads(NEWS_FILE.read_text(encoding="utf-8"))
+            return data if isinstance(data, list) else []
+        except (ValueError, OSError):
+            return []
+    return []
+
+
+def save_news(items: list) -> None:
+    tmp = NEWS_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(NEWS_FILE)  # écriture atomique
 
 
 def safe_name(theme_id: str, original: str) -> str:
@@ -324,6 +349,234 @@ def _detect_type(url: str) -> str:
     if "vimeo.com" in url:
         return "vimeo"
     return "url"
+
+
+# --- Actualités & veille du secteur ------------------------------------------
+FETCH_TIMEOUT = 6          # secondes
+FETCH_MAX_BYTES = 1_000_000  # 1 Mo lus au maximum
+_UA = "Mozilla/5.0 (compatible; FormationVeilleBot/1.0)"
+
+
+def _norm_url(u: str) -> str:
+    return (u or "").strip().rstrip("/")
+
+
+def _host_blocked(host: str) -> bool:
+    """Bloque localhost et les plages IP privées / internes (anti-SSRF minimal)."""
+    if not host:
+        return True
+    low = host.lower()
+    if low == "localhost" or low.endswith(".local") or low.endswith(".internal"):
+        return True
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return True
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return True
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            return True
+    return False
+
+
+def validate_stored_url(u: str):
+    """Validation de format pour une URL simplement STOCKÉE (create/update) :
+       http/https, hôte présent, pas de localhost ni d'IP interne littérale.
+       Ne résout pas le DNS (le stockage ne contacte pas le site)."""
+    p = urlparse((u or "").strip())
+    if p.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="URL invalide : seuls http:// et https:// sont autorisés.")
+    if not p.hostname:
+        raise HTTPException(status_code=400, detail="URL invalide.")
+    low = p.hostname.lower()
+    if low == "localhost" or low.endswith(".local") or low.endswith(".internal"):
+        raise HTTPException(status_code=400, detail="URL interne ou non autorisée.")
+    try:
+        ip = ipaddress.ip_address(p.hostname)  # hôte = adresse IP littérale ?
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            raise HTTPException(status_code=400, detail="URL interne ou non autorisée.")
+    except ValueError:
+        pass  # nom d'hôte (pas une IP) : accepté sans résolution DNS
+    return p
+
+
+def validate_public_url(u: str):
+    """Validation renforcée avant une REQUÊTE serveur (fetch métadonnées) :
+       format + résolution DNS bloquant les cibles internes (anti-SSRF)."""
+    p = validate_stored_url(u)
+    if _host_blocked(p.hostname):
+        raise HTTPException(status_code=400, detail="URL interne ou non autorisée.")
+    return p
+
+
+class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+    """Revalide chaque redirection (empêche un rebond vers une cible interne)."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        p = urlparse(newurl)
+        if p.scheme not in ("http", "https") or _host_blocked(p.hostname or ""):
+            raise urllib.error.URLError("redirection bloquée")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+class _MetaParser(HTMLParser):
+    """Extrait les métadonnées Open Graph + fallbacks HTML classiques."""
+    def __init__(self):
+        super().__init__()
+        self.meta = {}
+        self._in_title = False
+        self.title_text = ""
+
+    def handle_starttag(self, tag, attrs):
+        a = {k.lower(): (v or "") for k, v in attrs}
+        if tag == "meta":
+            key = (a.get("property") or a.get("name") or "").lower()
+            if key and "content" in a and key not in self.meta:
+                self.meta[key] = a["content"].strip()
+        elif tag == "title":
+            self._in_title = True
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
+
+    def handle_data(self, data):
+        if self._in_title:
+            self.title_text += data
+
+
+def parse_metadata(html: str, url: str) -> dict:
+    """Priorité aux balises og:* ; fallback sur <title>, meta description, domaine."""
+    p = _MetaParser()
+    try:
+        p.feed(html)
+    except Exception:
+        pass
+    m = p.meta
+    title = m.get("og:title") or (p.title_text or "").strip()
+    description = m.get("og:description") or m.get("description") or ""
+    image = m.get("og:image") or m.get("og:image:url") or ""
+    source = m.get("og:site_name") or (urlparse(url).hostname or "").replace("www.", "")
+    published = m.get("article:published_time") or m.get("og:article:published_time") or ""
+    if image:
+        image = urljoin(url, image)  # résout les URL d'image relatives
+    return {
+        "title": title.strip(),
+        "description": description.strip(),
+        "imageUrl": image.strip(),
+        "source": source.strip(),
+        "publishedAt": published.strip(),
+    }
+
+
+def fetch_metadata(url: str) -> dict:
+    validate_public_url(url)
+    opener = urllib.request.build_opener(_SafeRedirect)
+    req = urllib.request.Request(url, headers={"User-Agent": _UA, "Accept": "text/html,*/*"})
+    try:
+        with opener.open(req, timeout=FETCH_TIMEOUT) as resp:
+            ctype = resp.headers.get("Content-Type", "")
+            charset = "utf-8"
+            if "charset=" in ctype:
+                charset = ctype.split("charset=")[-1].split(";")[0].strip() or "utf-8"
+            raw = resp.read(FETCH_MAX_BYTES)
+    except HTTPException:
+        raise
+    except (urllib.error.URLError, socket.timeout, ValueError, OSError) as e:
+        raise HTTPException(status_code=502, detail=f"Impossible de récupérer la page ({type(e).__name__}).")
+    try:
+        html = raw.decode(charset, errors="replace")
+    except (LookupError, UnicodeDecodeError):
+        html = raw.decode("utf-8", errors="replace")
+    return parse_metadata(html, url)
+
+
+def _public_articles(items):
+    pub = [a for a in items if a.get("isPublished")]
+    pub.sort(key=lambda a: (a.get("publishedAt") or a.get("createdAt") or ""), reverse=True)
+    return pub
+
+
+@app.post("/api/news/fetch-metadata", dependencies=[Depends(require_auth)])
+def news_fetch_metadata(payload: dict):
+    """Récupère les métadonnées d'un article à partir de son URL (côté serveur)."""
+    return fetch_metadata((payload or {}).get("url", ""))
+
+
+@app.get("/api/news")
+def news_public():
+    """Articles publiés, du plus récent au plus ancien (public)."""
+    return {"articles": _public_articles(load_news())}
+
+
+@app.get("/api/admin/news", dependencies=[Depends(require_auth)])
+def news_all():
+    """Tous les articles (admin)."""
+    items = load_news()
+    items.sort(key=lambda a: a.get("createdAt") or "", reverse=True)
+    return {"articles": items}
+
+
+@app.post("/api/news", dependencies=[Depends(require_auth)])
+def news_create(payload: dict):
+    payload = payload or {}
+    url = _norm_url(payload.get("url"))
+    validate_stored_url(url)
+    now = datetime.now(timezone.utc).isoformat()
+    with _lock:
+        items = load_news()
+        if any(_norm_url(a.get("url")) == url for a in items):
+            raise HTTPException(status_code=409, detail="Cet article a déjà été ajouté.")
+        article = {
+            "id": uuid.uuid4().hex[:12],
+            "title": (payload.get("title") or "").strip(),
+            "description": (payload.get("description") or "").strip(),
+            "url": url,
+            "imageUrl": (payload.get("imageUrl") or "").strip(),
+            "source": (payload.get("source") or "").strip(),
+            "publishedAt": (payload.get("publishedAt") or "").strip(),
+            "isPublished": bool(payload.get("isPublished", False)),
+            "createdAt": now,
+        }
+        items.append(article)
+        save_news(items)
+    return article
+
+
+@app.put("/api/news/{article_id}", dependencies=[Depends(require_auth)])
+def news_update(article_id: str, payload: dict):
+    payload = payload or {}
+    with _lock:
+        items = load_news()
+        art = next((a for a in items if a.get("id") == article_id), None)
+        if not art:
+            raise HTTPException(status_code=404, detail="Article introuvable.")
+        if "url" in payload:
+            new_url = _norm_url(payload["url"])
+            validate_stored_url(new_url)
+            if any(a.get("id") != article_id and _norm_url(a.get("url")) == new_url for a in items):
+                raise HTTPException(status_code=409, detail="Cet article a déjà été ajouté.")
+            art["url"] = new_url
+        for k in ("title", "description", "imageUrl", "source", "publishedAt"):
+            if k in payload:
+                art[k] = (payload[k] or "").strip()
+        if "isPublished" in payload:
+            art["isPublished"] = bool(payload["isPublished"])
+        save_news(items)
+    return art
+
+
+@app.delete("/api/news/{article_id}", dependencies=[Depends(require_auth)])
+def news_delete(article_id: str):
+    with _lock:
+        items = load_news()
+        kept = [a for a in items if a.get("id") != article_id]
+        save_news(kept)
+    return JSONResponse({"removed": article_id, "existed": len(kept) != len(items)})
 
 
 # --- Front statique ----------------------------------------------------------
