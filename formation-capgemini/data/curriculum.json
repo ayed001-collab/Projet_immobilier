@@ -405,223 +405,344 @@
       "sousDomaine": "pero",
       "niveau": "specialise",
       "type": "acte-de-gestion",
-      "resume": "Acte de gestion de référence : liquidation d'un plan d'épargne retraite (PER obligatoire) — de la demande du titulaire à la mise en paiement de la prestation.",
+      "resume": "Acte de gestion de référence : la liquidation retraite d'un plan d'épargne retraite (PER obligatoire) — processus, règles de gestion, étapes de saisie et données nécessaires.",
       "dureeEstimee": "50 min",
       "themePilote": true,
       "sections": {
         "definition": [
-          "La liquidation retraite est l'opération par laquelle le titulaire d'un plan d'épargne retraite fait valoir ses droits et transforme l'épargne constituée en prestation : rente viagère, capital, ou combinaison des deux. Elle n'est jamais automatique — elle suppose une demande formelle du titulaire.",
-          "Trois conditions encadrent son déclenchement : l'âge légal de départ (relevé progressivement de 62 à 64 ans selon l'année de naissance, réforme 2023) OU la liquidation de la pension du régime de base (parfois avant l'âge légal : carrière longue, inaptitude…), ET, en principe, la cessation de l'activité professionnelle.",
-          "Pour un PER Obligatoire, le cœur du plan est le compartiment des versements obligatoires (C3), dont la sortie s'effectue exclusivement en rente viagère. La liquidation marque le passage de la phase de constitution (épargne) à la phase de restitution (service de la prestation).",
-          "À distinguer des cas de déblocage anticipé (hors liquidation retraite) : accidents de la vie (invalidité du titulaire, du conjoint ou d'un enfant, décès du conjoint, surendettement, expiration des droits au chômage, cessation d'activité non salariée sur liquidation judiciaire) et achat de la résidence principale — ce dernier possible uniquement sur les compartiments volontaire et épargne salariale, jamais sur les versements obligatoires."
+          "Liquidation retraite : opération par laquelle le titulaire d'un plan d'épargne retraite fait valoir ses droits et transforme l'épargne constituée en prestation — rente viagère, capital, ou combinaison des deux. Elle n'est jamais automatique : elle suppose une demande formelle du titulaire.",
+          "Cadre : loi PACTE (2019) — plans d'épargne retraite (PER individuel, collectif, obligatoire). Cette fiche présente le processus, les définitions, les règles de gestion, les étapes de saisie et les données nécessaires — vision générique, indépendante des outils."
         ],
-        "conceptsCles": [
+        "conditions": [
           {
-            "terme": "Règle d'or",
-            "definition": "Le mode de sortie autorisé (capital et/ou rente) dépend de l'origine des versements, c'est-à-dire du compartiment."
+            "titre": "Âge légal de la retraite",
+            "items": [
+              "Relevé progressivement de 62 à 64 ans selon l'année de naissance (réforme 2023)."
+            ]
           },
           {
-            "terme": "C1 — Versements volontaires",
-            "definition": "Versements individuels du titulaire, avec ou sans déduction fiscale à l'entrée. Sortie possible en capital (unique ou fractionné) et/ou en rente."
+            "titre": "OU liquidation du régime de base",
+            "items": [
+              "Date de liquidation de la pension du régime obligatoire (Sécurité sociale), parfois avant l'âge légal (carrière longue, inaptitude…)."
+            ]
           },
           {
-            "terme": "C2 — Épargne salariale",
-            "definition": "Participation, intéressement, abondement employeur, jours de CET monétisés. Sortie en capital et/ou en rente."
+            "titre": "ET cessation d'activité",
+            "items": [
+              "La mise en service de la prestation suppose en principe la cessation de l'activité professionnelle."
+            ]
           },
           {
-            "terme": "C3 — Versements obligatoires",
-            "definition": "Cotisations obligatoires employeur et/ou salarié (cœur du PER obligatoire). Sortie obligatoirement en rente viagère."
-          },
-          {
-            "terme": "Exception « petite rente »",
-            "definition": "Si la rente issue des versements obligatoires est de faible montant (seuil réglementaire ≈ 110 €/mois, soit ≈ 1 320 €/an), un versement en capital unique est admis."
-          },
-          {
-            "terme": "Rente réversible",
-            "definition": "Reversée au bénéficiaire désigné au décès du titulaire (taux usuels 60 %, 100 %, voire 150 %)."
-          },
-          {
-            "terme": "Rente à annuités garanties",
-            "definition": "Versement garanti sur un nombre d'annuités choisi (typiquement 5 à 20 ans, plafonné par l'espérance de vie diminuée de 5 ans)."
-          },
-          {
-            "terme": "Rente à paliers",
-            "definition": "Rente majorée puis réduite — ou minorée puis augmentée — sur 5 ou 10 ans (ex. ± 20 %)."
-          },
-          {
-            "terme": "Capital fractionné",
-            "definition": "Retraits successifs à l'initiative du titulaire, encadrés par le contrat (fréquence, fraction minimale, solde minimal). Sous le solde minimal, la liquidation devient totale."
-          },
-          {
-            "terme": "Date d'effet",
-            "definition": "Date de mise en service de la prestation, usuellement fixée au 1er jour d'un mois (contrôle bloquant à la saisie)."
+            "titre": "À distinguer : les cas de déblocage anticipé (hors liquidation retraite)",
+            "items": [
+              "Accidents de la vie : invalidité (titulaire, conjoint, enfant), décès du conjoint, surendettement, expiration des droits au chômage, cessation d'activité non salariée sur liquidation judiciaire.",
+              "Achat de la résidence principale : possible uniquement sur les compartiments volontaire et épargne salariale — jamais sur les versements obligatoires."
+            ]
           }
         ],
-        "objectifs": [
-          "Vérifier les conditions de déclenchement de la liquidation (âge légal ou liquidation du régime de base, + cessation d'activité).",
-          "Déterminer le mode de sortie autorisé selon l'origine des versements (règle d'or des compartiments).",
-          "Accompagner le choix des options de sortie (rente réversible, annuités garanties, paliers ; capital unique ou fractionné) et appliquer les règles de cumul.",
-          "Réunir les données et pièces nécessaires et sécuriser les contrôles (recevabilité, conformité, valorisation, validation 4 yeux).",
-          "Situer le traitement fiscal de la prestation selon l'origine des versements et le mode de sortie."
-        ],
+        "compartiments": {
+          "regleOr": "La règle d'or : le mode de sortie autorisé dépend de l'origine des versements.",
+          "definitions": [
+            {
+              "terme": "C1 – Versements volontaires",
+              "definition": "Versements individuels du titulaire, avec ou sans déduction fiscale à l'entrée."
+            },
+            {
+              "terme": "C2 – Épargne salariale",
+              "definition": "Participation, intéressement, abondement employeur, jours de CET monétisés."
+            },
+            {
+              "terme": "C3 – Versements obligatoires",
+              "definition": "Cotisations obligatoires employeur et/ou salarié (cœur du PER obligatoire)."
+            }
+          ],
+          "matrice": {
+            "entetes": [
+              "Compartiment",
+              "Capital unique",
+              "Capital fractionné",
+              "Rente viagère"
+            ],
+            "lignes": [
+              [
+                "C1 – Versements volontaires",
+                "✓",
+                "✓",
+                "✓"
+              ],
+              [
+                "C2 – Épargne salariale",
+                "✓",
+                "✓",
+                "✓"
+              ],
+              [
+                "C3 – Versements obligatoires",
+                "✗",
+                "✗",
+                "✓"
+              ]
+            ]
+          },
+          "exception": "si la rente issue des versements obligatoires est de faible montant (seuil réglementaire ≈ 110 €/mois, soit ≈ 1 320 €/an), un versement en capital unique est admis.",
+          "aRetenir": "capital (unique ou fractionné) et rente sont librement combinables entre compartiments ; seul le compartiment obligatoire impose la rente viagère. Chaque compartiment se liquide selon un « projet de vie » propre du titulaire."
+        },
+        "optionsSortie": {
+          "rente": {
+            "titre": "Options de rente (exemples usuels du marché)",
+            "items": [
+              "Rente viagère simple : versée à vie au titulaire.",
+              "Rente réversible : reversée au bénéficiaire désigné au décès (taux usuels 60 %, 100 %, voire 150 %).",
+              "Rente à annuités garanties : versement garanti sur un nombre d'annuités choisi (typiquement 5 à 20 ans, plafonné par l'espérance de vie diminuée de 5 ans).",
+              "Rente à majoration/minoration (paliers) : rente majorée puis réduite — ou minorée puis augmentée — sur 5 ou 10 ans (ex. ± 20 %)."
+            ]
+          },
+          "capital": {
+            "titre": "Options de capital",
+            "items": [
+              "Capital unique : versement de la totalité en une fois.",
+              "Capital fractionné (« à la demande ») : retraits successifs à l'initiative du titulaire, encadrés par les conditions du contrat (ex. 1 retrait/an, fraction minimale, solde minimal à conserver).",
+              "Règle fréquente : sous le solde minimal, la liquidation devient totale.",
+              "Les fonds en attente de retrait sont généralement sécurisés (fonds en euros / support prudent)."
+            ]
+          },
+          "matrice": {
+            "titre": "Matrice de cumul des options de rente (pratique de marché)",
+            "entetes": [
+              "",
+              "Réversion",
+              "Majoration",
+              "Annuités garanties"
+            ],
+            "lignes": [
+              [
+                "Réversion",
+                "—",
+                "✓",
+                "✓"
+              ],
+              [
+                "Majoration",
+                "✓",
+                "—",
+                "✗"
+              ],
+              [
+                "Annuités garanties",
+                "✓",
+                "✗",
+                "—"
+              ]
+            ]
+          },
+          "regleCle": "annuités garanties et rente à paliers sont incompatibles ; la combinaison « annuités garanties réversibles » permet en revanche de cumuler garantie d'annuités et réversion."
+        },
+        "processus": {
+          "etapes": [
+            {
+              "titre": "Demande",
+              "description": "Le titulaire formule sa demande (espace client, mail, courrier) ; envoi du formulaire de liquidation et de la liste des pièces."
+            },
+            {
+              "titre": "Réception & analyse",
+              "description": "Enregistrement de la demande, contrôle de recevabilité, relance automatique si pièces bloquantes manquantes."
+            },
+            {
+              "titre": "Simulation",
+              "description": "Sur demande : simulations chiffrées des options (rente/capital) adressées au titulaire pour choix éclairé."
+            },
+            {
+              "titre": "Instruction & saisie",
+              "description": "Saisie du dossier de liquidation : contrat, compartiments, options de sortie, bénéficiaires, coordonnées bancaires."
+            },
+            {
+              "titre": "Validation",
+              "description": "Contrôle des données et de la valorisation ; validation à un ou deux niveaux selon les seuils d'habilitation."
+            },
+            {
+              "titre": "Paiement & notification",
+              "description": "Mise en paiement (virement), notification de liquidation et titre de rente au titulaire."
+            }
+          ],
+          "boucles": [
+            "Pièces manquantes bloquantes → courrier/notification de demande de pièces, dossier en attente.",
+            "Simulation non conforme aux attentes → nouveau choix d'options par le titulaire avant instruction.",
+            "Contrôle de validation KO → retour au gestionnaire pour correction avant mise en paiement."
+          ]
+        },
         "etapes": [
           {
-            "titre": "1. Identifier le titulaire",
-            "acteur": "Gestionnaire",
-            "description": "Rechercher le tiers (n° client, état civil) ; distinguer titulaire, bénéficiaire, conjoint, notaire. Règle : la liquidation se saisit toujours sur le titulaire du compte retraite."
+            "titre": "Identifier le titulaire",
+            "actions": "Rechercher le tiers (n° client, état civil) ; distinguer titulaire, bénéficiaire, conjoint, notaire.",
+            "regle": "La liquidation se saisit toujours sur le titulaire du compte retraite."
           },
           {
-            "titre": "2. Contrôler ses données",
-            "acteur": "Gestionnaire / Système",
-            "description": "Vérifier état civil, adresses et résidence fiscales, RIB, situation d'exonération ; mettre à jour si besoin. Règle : conformité aux justificatifs + contrôle automatisé (sanctions / LCB-FT) avec alerte en cas d'anomalie."
+            "titre": "Contrôler ses données",
+            "actions": "Vérifier état civil, adresse et résidence fiscales, RIB, situation d'exonération ; mettre à jour si besoin.",
+            "regle": "Conformité aux justificatifs + contrôle de conformité automatisé (sanctions/LCB-FT) avec alerte en cas d'anomalie."
           },
           {
-            "titre": "3. Enregistrer la demande",
-            "acteur": "Gestionnaire",
-            "description": "Dater la demande et sa réception, qualifier le motif, le canal et la sensibilité (VIP / réclamation). Règle : la date de réception fait courir les délais de traitement."
+            "titre": "Enregistrer la demande",
+            "actions": "Dater la demande et sa réception, qualifier motif, canal, sensibilité (VIP/réclamation).",
+            "regle": "La date de réception fait courir les délais de traitement."
           },
           {
-            "titre": "4. Contrôler les pièces",
-            "acteur": "Gestionnaire",
-            "description": "Pointer chaque pièce reçue (date, conformité), relancer les pièces bloquantes. Règle : exhaustivité et conformité des pièces avant instruction."
+            "titre": "Contrôler les pièces",
+            "actions": "Pointer chaque pièce reçue (date, conformité), relancer les pièces bloquantes.",
+            "regle": "Exhaustivité et conformité des pièces avant instruction."
           },
           {
-            "titre": "5. Instruire le dossier",
-            "acteur": "Gestionnaire",
-            "description": "Sélectionner contrat et compartiments ; fixer la date d'effet ; rattacher relations et bénéficiaires selon l'option. Règle : date d'effet usuellement au 1er jour d'un mois (contrôle bloquant)."
+            "titre": "Instruire le dossier",
+            "actions": "Sélectionner contrat et compartiments ; fixer la date d'effet ; rattacher relations et bénéficiaires selon l'option.",
+            "regle": "Date d'effet usuellement au 1er jour d'un mois (contrôle bloquant)."
           },
           {
-            "titre": "6. Saisir la sortie",
-            "acteur": "Gestionnaire",
-            "description": "Par compartiment : option de rente ou part de capital, périodicité, fractionnement, mode de règlement. Règle : périodicité et options verrouillées par les conditions du produit."
+            "titre": "Saisir la sortie",
+            "actions": "Par compartiment : option de rente ou part de capital, périodicité, fractionnement, mode de règlement.",
+            "regle": "Périodicité et options verrouillées par les conditions du produit."
           },
           {
-            "titre": "7. Valider et payer",
-            "acteur": "Gestionnaire / Valideur",
-            "description": "Vérifier le résumé et la valorisation ; validation (4 yeux selon le seuil) ; traitement de mise en paiement. Règle : séparation des tâches — le saisisseur ne valide pas ses propres dossiers au-delà du seuil."
+            "titre": "Valider et payer",
+            "actions": "Vérifier le résumé et la valorisation ; validation (4 yeux selon seuil) ; traitement de mise en paiement.",
+            "regle": "Séparation des tâches : saisisseur ≠ valideur au-delà du seuil."
           }
         ],
-        "reglesGestion": [
-          "Origine des versements = mode de sortie : capital et fractionnement uniquement sur les versements volontaires (C1) et l'épargne salariale (C2) ; versements obligatoires (C3) en rente viagère, sauf petite rente (≈ 110 €/mois).",
-          "Date d'effet normée : la liquidation prend usuellement effet le 1er jour d'un mois — contrôle bloquant à la saisie.",
-          "Pas de prestation sans conditions remplies : âge légal ou liquidation du régime de base + cessation d'activité, justifiés par les pièces du dossier.",
-          "Options encadrées par le produit : périodicité, taux de réversion, annuités — verrouillés par les conditions générales du contrat.",
-          "Cumul d'options limité : annuités garanties et rente à paliers sont incompatibles ; la réversion est cumulable avec chacune (ex. annuités garanties réversibles).",
-          "Séparation saisie / validation : contrôle « 4 yeux » au-delà des seuils d'habilitation ; le saisisseur ne valide pas ses propres dossiers sensibles.",
-          "Capital fractionné : sous le solde minimal fixé par le contrat, la liquidation devient totale ; les fonds en attente de retrait sont généralement sécurisés (fonds en euros / support prudent)."
-        ],
-        "donneesSaisie": [
+        "donneesSaisie": {
+          "intro": "Check-list des informations à réunir avant toute saisie.",
+          "groupes": [
+            {
+              "titre": "Identification du titulaire",
+              "items": [
+                "État civil complet, date de naissance (base du calcul de la rente).",
+                "Adresse fiscale et pays de résidence fiscale.",
+                "Situation d'exonération selon les revenus (taux de prélèvements sociaux).",
+                "N° de client / n° de contrat, compartiments détenus et encours."
+              ]
+            },
+            {
+              "titre": "Éléments de la demande",
+              "items": [
+                "Date de la demande du client et date de réception par l'assureur.",
+                "Canal d'entrée (espace client, mail, courrier, téléphone).",
+                "Motif et qualification (sensibilité, réclamation, référence externe : notaire, assureur adverse…).",
+                "Date d'effet souhaitée de la liquidation."
+              ]
+            },
+            {
+              "titre": "Choix de sortie par compartiment",
+              "items": [
+                "Sortie en capital : part (0/100 %), fractionnement éventuel, montant des fractions.",
+                "Sortie en rente : option choisie, taux de réversion, nombre d'annuités, paliers, périodicité.",
+                "Bénéficiaires / relations : identité du conjoint (dates de mariage/fin), bénéficiaires d'annuités garanties."
+              ]
+            },
+            {
+              "titre": "Règlement et fiscalité",
+              "items": [
+                "Coordonnées bancaires (RIB au nom du titulaire) — saisies une fois, réutilisées ensuite.",
+                "Mode de règlement (virement émis).",
+                "Options fiscales : dispense de prélèvement forfaitaire le cas échéant.",
+                "Données de valorisation : encours par compartiment et par support au jour de l'effet."
+              ]
+            }
+          ]
+        },
+        "pieces": {
+          "intro": "Un dossier incomplet est la première cause d'allongement des délais.",
+          "groupes": [
+            {
+              "titre": "Pièces usuelles du dossier de liquidation",
+              "items": [
+                "Formulaire de demande de liquidation daté et signé.",
+                "Pièce d'identité en cours de validité.",
+                "Relevé d'identité bancaire (RIB) au nom du titulaire.",
+                "Attestation de liquidation de la retraite du régime de base (délivrée par la caisse de retraite).",
+                "Justificatif de cessation d'activité le cas échéant.",
+                "Avis d'imposition (situation fiscale, exonérations).",
+                "Selon l'option : acte de mariage / pièces du bénéficiaire de réversion, coordonnées des bénéficiaires."
+              ]
+            },
+            {
+              "titre": "Contrôles tout au long du parcours",
+              "items": [
+                "Recevabilité : exhaustivité et conformité des pièces (pointage pièce par pièce, dates de réception).",
+                "Conformité du tiers : cohérence données/justificatifs ; filtrage automatisé sanctions / LCB-FT avec alerte.",
+                "Cohérence de saisie : date d'effet (1er du mois), périodicité conforme au produit, seuils de rente minimale.",
+                "Valorisation : vérification du détail par compartiment avant validation.",
+                "Validation « 4 yeux » au-delà de seuils d'habilitation définis par profil utilisateur.",
+                "Bonne pratique : matérialiser chaque contrôle dans le dossier (qui, quoi, quand) — la traçabilité des contrôles conditionne l'auditabilité du processus et la conformité réglementaire."
+              ]
+            }
+          ]
+        },
+        "fiscalite": {
+          "lignes": [
+            {
+              "situation": "Versements volontaires déduits à l'entrée",
+              "traitement": "Sortie en rente : imposée comme une pension de retraite (barème IR, abattement 10 %) + prélèvements sociaux sur une fraction. Sortie en capital : part des versements au barème IR ; plus-values au PFU 30 %."
+            },
+            {
+              "situation": "Versements volontaires non déduits",
+              "traitement": "Sortie en rente : régime des rentes viagères à titre onéreux (fraction imposable selon l'âge à la liquidation). Sortie en capital : versements exonérés d'IR ; plus-values au PFU 30 %."
+            },
+            {
+              "situation": "Épargne salariale (C2)",
+              "traitement": "Sortie en rente : fraction imposable selon l'âge (rente à titre onéreux), sur les seuls produits. Sortie en capital : versements exonérés d'IR ; plus-values soumises aux prélèvements sociaux."
+            },
+            {
+              "situation": "Versements obligatoires (C3)",
+              "traitement": "Sortie en rente : imposée comme une pension de retraite (barème IR) + prélèvements sociaux. Sortie en capital : non applicable (sortie en rente obligatoire, hors petite rente)."
+            }
+          ],
+          "note": "les données fiscales du titulaire (résidence, exonérations, dispense de prélèvement) doivent être vérifiées avant la liquidation — elles déterminent les prélèvements appliqués à la prestation."
+        },
+        "reglesEssentielles": [
           {
-            "titre": "Identification du titulaire",
-            "items": [
-              "État civil complet et date de naissance (base du calcul de la rente).",
-              "Adresse fiscale et pays de résidence fiscale.",
-              "Situation d'exonération selon les revenus (taux de prélèvements sociaux).",
-              "N° de client / n° de contrat, compartiments détenus et encours."
-            ]
+            "titre": "Origine des versements = mode de sortie",
+            "texte": "Capital et fractionnement uniquement sur versements volontaires et épargne salariale ; versements obligatoires en rente viagère, sauf petite rente (≈ 110 €/mois)."
           },
           {
-            "titre": "Éléments de la demande",
-            "items": [
-              "Date de la demande du client et date de réception par l'assureur.",
-              "Canal d'entrée (espace client, mail, courrier, téléphone).",
-              "Motif et qualification (sensibilité, réclamation, référence externe : notaire, assureur adverse…).",
-              "Date d'effet souhaitée de la liquidation."
-            ]
+            "titre": "Date d'effet normée",
+            "texte": "La liquidation prend usuellement effet le 1er jour d'un mois — contrôle bloquant à la saisie."
           },
           {
-            "titre": "Choix de sortie par compartiment",
-            "items": [
-              "Sortie en capital : part (0 / 100 %), fractionnement éventuel, montant des fractions.",
-              "Sortie en rente : option choisie, taux de réversion, nombre d'annuités, paliers, périodicité.",
-              "Bénéficiaires / relations : identité du conjoint (dates de mariage / fin), bénéficiaires d'annuités garanties."
-            ]
+            "titre": "Pas de rente sans conditions remplies",
+            "texte": "Âge légal ou liquidation du régime de base + cessation d'activité, justifiés par les pièces du dossier."
           },
           {
-            "titre": "Règlement et fiscalité",
-            "items": [
-              "Coordonnées bancaires (RIB au nom du titulaire), saisies une fois puis réutilisées.",
-              "Mode de règlement (virement émis).",
-              "Options fiscales : dispense de prélèvement forfaitaire le cas échéant.",
-              "Données de valorisation : encours par compartiment et par support au jour de l'effet."
-            ]
+            "titre": "Options encadrées par le produit",
+            "texte": "Périodicité, taux de réversion, annuités : verrouillés par les conditions générales du contrat."
+          },
+          {
+            "titre": "Cumul d'options limité",
+            "texte": "Annuités garanties et rente à paliers incompatibles ; réversion cumulable avec chacune."
+          },
+          {
+            "titre": "Séparation saisie / validation",
+            "texte": "Contrôle « 4 yeux » au-delà de seuils d'habilitation ; le saisisseur ne valide pas ses propres dossiers sensibles."
           }
         ],
-        "pieces": [
+        "sources": [
           {
-            "titre": "Pièces usuelles du dossier",
-            "items": [
-              "Formulaire de demande de liquidation daté et signé.",
-              "Pièce d'identité en cours de validité.",
-              "Relevé d'identité bancaire (RIB) au nom du titulaire.",
-              "Attestation de liquidation de la retraite du régime de base (délivrée par la caisse de retraite).",
-              "Justificatif de cessation d'activité le cas échéant.",
-              "Avis d'imposition (situation fiscale, exonérations).",
-              "Selon l'option : acte de mariage / pièces du bénéficiaire de réversion, coordonnées des bénéficiaires."
-            ]
+            "libelle": "Support de formation interne — La liquidation retraite (plans d'épargne retraite)"
           },
           {
-            "titre": "Contrôles tout au long du parcours",
-            "items": [
-              "Recevabilité : exhaustivité et conformité des pièces (pointage pièce par pièce, dates de réception).",
-              "Conformité du tiers : cohérence données / justificatifs ; filtrage automatisé sanctions / LCB-FT avec alerte.",
-              "Cohérence de saisie : date d'effet (1er du mois), périodicité conforme au produit, seuils de rente minimale.",
-              "Valorisation : vérification du détail par compartiment avant validation.",
-              "Validation « 4 yeux » au-delà des seuils d'habilitation définis par profil utilisateur.",
-              "Traçabilité : matérialiser chaque contrôle (qui, quoi, quand) — condition de l'auditabilité et de la conformité."
-            ]
+            "libelle": "service-public.fr — PER d'entreprise obligatoire",
+            "url": "https://www.service-public.fr/particuliers/vosdroits/F34982"
+          },
+          {
+            "libelle": "la-retraite-en-clair.fr",
+            "url": "https://www.la-retraite-en-clair.fr"
+          },
+          {
+            "libelle": "previssima.fr",
+            "url": "https://www.previssima.fr"
+          },
+          {
+            "libelle": "lassuranceretraite.fr",
+            "url": "https://www.lassuranceretraite.fr"
           }
         ],
-        "reglementation": [
-          {
-            "reference": "Loi n° 2019-486 du 22 mai 2019 (Loi Pacte)",
-            "description": "Création du PER et régime de sortie par compartiment (capital / rente)."
-          },
-          {
-            "reference": "Code monétaire et financier, art. L224-1 et s.",
-            "description": "Régime du PER, dont la sortie en rente viagère du compartiment obligatoire."
-          },
-          {
-            "reference": "CMF, art. L224-4",
-            "description": "Cas de déblocage anticipé (accidents de la vie, résidence principale)."
-          },
-          {
-            "reference": "Code des assurances (rentes & provisions)",
-            "description": "Service des rentes viagères, provisionnement, tables de mortalité réglementaires."
-          },
-          {
-            "reference": "Réforme des retraites (2023)",
-            "description": "Relèvement progressif de l'âge légal de départ (62 → 64 ans) selon l'année de naissance."
-          }
-        ],
-        "fiscalite": [
-          {
-            "situation": "Versements volontaires déduits à l'entrée",
-            "traitement": "Rente : imposée comme une pension de retraite (barème IR, abattement 10 %) + prélèvements sociaux sur une fraction. Capital : part des versements au barème IR, plus-values au PFU 30 %."
-          },
-          {
-            "situation": "Versements volontaires non déduits",
-            "traitement": "Rente : régime des rentes viagères à titre onéreux (fraction imposable selon l'âge à la liquidation). Capital : versements exonérés d'IR, plus-values au PFU 30 %."
-          },
-          {
-            "situation": "Épargne salariale (C2)",
-            "traitement": "Rente : fraction imposable selon l'âge (rente à titre onéreux), sur les seuls produits. Capital : versements exonérés d'IR, plus-values soumises aux prélèvements sociaux."
-          },
-          {
-            "situation": "Versements obligatoires (C3 — PERO)",
-            "traitement": "Rente : imposée comme une pension de retraite (barème IR) + prélèvements sociaux. Capital : non applicable (sortie en rente obligatoire, hors petite rente)."
-          }
-        ],
-        "vigilance": [
-          "Un dossier incomplet est la première cause d'allongement des délais : contrôler l'exhaustivité et la conformité des pièces avant instruction.",
-          "Ne jamais proposer une sortie en capital sur les versements obligatoires (C3) : sortie en rente viagère obligatoire, sauf petite rente (≈ 110 €/mois).",
-          "Vérifier les données fiscales du titulaire (résidence, exonérations, dispense de prélèvement) avant la liquidation : elles déterminent les prélèvements appliqués à la prestation.",
-          "Date d'effet au 1er jour d'un mois : contrôle bloquant à la saisie.",
-          "RIB au nom du titulaire et pièce d'identité valide : à sécuriser avant la mise en paiement (rejets de règlement).",
-          "Respecter la séparation saisie / validation (4 yeux) au-delà des seuils d'habilitation.",
-          "Règles de cumul d'options : annuités garanties et rente à paliers sont incompatibles."
-        ],
-        "schemaMermaid": "graph TD\n  A[1. Demande du titulaire] --> B[2. Réception & analyse]\n  B --> C[3. Simulation des options]\n  C --> D[4. Instruction & saisie]\n  D --> E[5. Validation]\n  E --> F[6. Paiement & notification]\n  B -. pièces manquantes .-> A\n  C -. choix à revoir .-> C\n  E -. contrôle KO .-> D",
         "quiz": [
           {
             "question": "De quoi dépend le mode de sortie (capital ou rente) autorisé ?",
@@ -666,31 +787,6 @@
             ],
             "reponse": 1,
             "explication": "La date d'effet est normée au 1er jour d'un mois — c'est un contrôle bloquant à la saisie."
-          }
-        ],
-        "sources": [
-          {
-            "libelle": "Support de formation interne — La liquidation retraite (plans d'épargne retraite)"
-          },
-          {
-            "libelle": "Service-public — Plan d'épargne retraite",
-            "url": "https://www.service-public.fr/particuliers/vosdroits/F34982"
-          },
-          {
-            "libelle": "Loi Pacte (Légifrance)",
-            "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000038496102"
-          },
-          {
-            "libelle": "La retraite en clair",
-            "url": "https://www.la-retraite-en-clair.fr"
-          },
-          {
-            "libelle": "Previssima",
-            "url": "https://www.previssima.fr"
-          },
-          {
-            "libelle": "L'Assurance retraite",
-            "url": "https://www.lassuranceretraite.fr"
           }
         ]
       }

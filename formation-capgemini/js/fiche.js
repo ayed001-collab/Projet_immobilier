@@ -10,20 +10,26 @@ FC.fiche = (function () {
 
   // Définition ordonnée des sections : clé JSON -> { titre, icône, moteur de rendu }.
   // Ajouter une section = ajouter une entrée ici + la clé correspondante dans le JSON.
+  // Une même clé n'est rendue que si le thème la fournit : le gabarit reste générique.
   const SECTIONS = [
-    { key: "definition",    anchor: "definition",  title: "Définition & concepts clés", icon: "📘", render: renderDefinition },
-    { key: "conceptsCles",  anchor: "concepts",    title: "Concepts clés",              icon: "🔑", render: renderConcepts, skipIf: (s) => !!s.definition && !s.conceptsCles /* concepts déjà inclus au besoin */ },
-    { key: "objectifs",     anchor: "objectifs",   title: "Objectifs pédagogiques",     icon: "🎯", render: (s) => renderList(s.objectifs) },
-    { key: "etapes",        anchor: "etapes",      title: "Parcours de l'acte de gestion", icon: "🧭", render: (s) => renderSteps(s.etapes) },
-    { key: "reglesGestion", anchor: "regles",      title: "Règles de gestion",          icon: "⚙️", render: (s) => renderList(s.reglesGestion) },
-    { key: "donneesSaisie", anchor: "donnees",     title: "Données nécessaires à la saisie", icon: "📋", render: (s) => renderGroupes(s.donneesSaisie) },
-    { key: "pieces",        anchor: "pieces",      title: "Pièces justificatives & contrôles", icon: "📎", render: (s) => renderGroupes(s.pieces) },
-    { key: "reglementation",anchor: "reglementation", title: "Réglementation en vigueur", icon: "⚖️", render: (s) => renderRefTable(s.reglementation) },
-    { key: "fiscalite",     anchor: "fiscalite",   title: "Aspects fiscaux",            icon: "💶", render: (s) => renderFiscalite(s.fiscalite) },
-    { key: "vigilance",     anchor: "vigilance",   title: "Points de vigilance", icon: "⚠️", render: (s) => renderList(s.vigilance, "list--warn") },
-    { key: "schemaMermaid", anchor: "schema",      title: "Schéma du processus",        icon: "🗺️", render: (s) => renderSchema(s.schemaMermaid) },
-    { key: "quiz",          anchor: "quiz",        title: "Quiz d'auto-évaluation",     icon: "✅", render: (s) => renderQuiz(s.quiz) },
-    { key: "sources",       anchor: "sources",     title: "Sources & références",       icon: "🔗", render: (s) => renderSources(s.sources) },
+    { key: "definition",       anchor: "definition",   title: "Définition",                         icon: "📘", render: (s) => renderDefinition(s) },
+    { key: "conceptsCles",     anchor: "concepts",     title: "Concepts clés",                      icon: "🔑", render: (s) => renderConcepts(s) },
+    { key: "conditions",       anchor: "conditions",   title: "Conditions de déclenchement",        icon: "🔑", render: (s) => renderGroupes(s.conditions) },
+    { key: "compartiments",    anchor: "compartiments",title: "Les trois compartiments",            icon: "🧩", render: (s) => renderCompartiments(s.compartiments) },
+    { key: "optionsSortie",    anchor: "options",      title: "Options de sortie & règles de cumul",icon: "🔀", render: (s) => renderOptions(s.optionsSortie) },
+    { key: "objectifs",        anchor: "objectifs",    title: "Objectifs pédagogiques",             icon: "🎯", render: (s) => renderList(s.objectifs) },
+    { key: "processus",        anchor: "processus",    title: "Processus de bout en bout",          icon: "🗺️", render: (s) => renderProcessus(s.processus) },
+    { key: "etapes",           anchor: "etapes",       title: "Étapes de saisie",                   icon: "🧭", render: (s) => renderSteps(s.etapes) },
+    { key: "reglesGestion",    anchor: "regles",       title: "Règles de gestion",                  icon: "⚙️", render: (s) => renderList(s.reglesGestion) },
+    { key: "donneesSaisie",    anchor: "donnees",      title: "Données nécessaires à la saisie",    icon: "📋", render: (s) => renderChecklist(s.donneesSaisie) },
+    { key: "pieces",           anchor: "pieces",       title: "Pièces justificatives & contrôles",  icon: "📎", render: (s) => renderChecklist(s.pieces) },
+    { key: "reglementation",   anchor: "reglementation", title: "Réglementation en vigueur",        icon: "⚖️", render: (s) => renderRefTable(s.reglementation) },
+    { key: "fiscalite",        anchor: "fiscalite",    title: "Fiscalité à la sortie",              icon: "💶", render: (s) => renderFiscalite(s.fiscalite) },
+    { key: "reglesEssentielles", anchor: "regles-cles", title: "Règles de gestion essentielles",    icon: "⭐", render: (s) => renderReglesNum(s.reglesEssentielles) },
+    { key: "vigilance",        anchor: "vigilance",    title: "Points de vigilance",                icon: "⚠️", render: (s) => renderList(s.vigilance, "list--warn") },
+    { key: "schemaMermaid",    anchor: "schema",       title: "Schéma du processus",                icon: "🗺️", render: (s) => renderSchema(s.schemaMermaid) },
+    { key: "quiz",             anchor: "quiz",         title: "Quiz d'auto-évaluation",             icon: "✅", render: (s) => renderQuiz(s.quiz) },
+    { key: "sources",          anchor: "sources",      title: "Sources & références",               icon: "🔗", render: (s) => renderSources(s.sources) },
   ];
 
   /** Rendu de la fiche complète pour un thème donné. */
@@ -31,10 +37,12 @@ FC.fiche = (function () {
     const s = theme.sections || {};
     const bc = FC.data.breadcrumb(theme);
 
-    // Sections effectivement présentes (dans l'ordre défini).
     const present = SECTIONS.filter((sec) => {
-      if (sec.key === "conceptsCles") return false; // concepts affichés dans la section "definition"
-      return s[sec.key] != null && !(Array.isArray(s[sec.key]) && s[sec.key].length === 0);
+      if (sec.key === "conceptsCles") return false; // concepts affichés dans "definition"
+      const v = s[sec.key];
+      if (v == null) return false;
+      if (Array.isArray(v)) return v.length > 0;
+      return true; // objet non nul (sections structurées)
     });
 
     const toc = present.map((sec) =>
@@ -83,6 +91,29 @@ FC.fiche = (function () {
     wireQuiz(container);
   }
 
+  /* ------------------------------------------------------------- Helpers */
+
+  /** Note / encadré : ton = info | warn | ok. */
+  function noteHTML(label, texte, ton) {
+    const l = label ? `<strong>${E(label)} :</strong> ` : "";
+    return `<p class="note note--${ton || "info"}">${l}${E(texte)}</p>`;
+  }
+
+  /** Tableau / matrice générique. Les cellules ✓ / ✗ / — sont mises en forme. */
+  function renderMatrix(entetes, lignes) {
+    const cell = (v, first) => {
+      if (first) return `<td class="mx-h">${E(v)}</td>`;
+      if (v === "✓") return `<td class="mx-ok" aria-label="oui">✓</td>`;
+      if (v === "✗") return `<td class="mx-ko" aria-label="non">✗</td>`;
+      if (v === "—" || v === "-" || v === "") return `<td class="mx-na">—</td>`;
+      return `<td>${E(v)}</td>`;
+    };
+    return `<div class="table-wrap"><table class="table table--matrix">
+      <thead><tr>${entetes.map((h, i) => `<th${i === 0 ? ' class="mx-corner"' : ""}>${E(h)}</th>`).join("")}</tr></thead>
+      <tbody>${lignes.map((row) => `<tr>${row.map((c, i) => cell(c, i === 0)).join("")}</tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
   /* ------------------------------------------------------------- Moteurs de rendu */
 
   function renderDefinition(s) {
@@ -120,13 +151,54 @@ FC.fiche = (function () {
     ).join("") + `</div>`;
   }
 
+  /** Checklist avec intro éventuelle : { intro?, groupes:[...] } (ou tableau simple). */
+  function renderChecklist(data) {
+    if (Array.isArray(data)) return renderGroupes(data);
+    const intro = data.intro ? `<p class="lead">${E(data.intro)}</p>` : "";
+    return intro + renderGroupes(data.groupes);
+  }
+
+  /** Les trois compartiments : règle d'or + définitions + matrice + notes. */
+  function renderCompartiments(c) {
+    let h = `<p class="lead">${E(c.regleOr)}</p>`;
+    h += `<dl class="dl">` + c.definitions.map((d) =>
+      `<div class="dl__item"><dt>${E(d.terme)}</dt><dd>${E(d.definition)}</dd></div>`
+    ).join("") + `</dl>`;
+    h += renderMatrix(c.matrice.entetes, c.matrice.lignes);
+    if (c.exception) h += noteHTML("Exception « petite rente »", c.exception, "warn");
+    if (c.aRetenir) h += noteHTML("À retenir", c.aRetenir, "ok");
+    return h;
+  }
+
+  /** Options de sortie : listes rente/capital + matrice de cumul + règle clé. */
+  function renderOptions(o) {
+    let h = renderGroupes([o.rente, o.capital]);
+    if (o.matrice) {
+      h += `<p class="sub">${E(o.matrice.titre)}</p>` + renderMatrix(o.matrice.entetes, o.matrice.lignes);
+    }
+    if (o.regleCle) h += noteHTML("Règle clé", o.regleCle, "info");
+    return h;
+  }
+
+  /** Processus de bout en bout : flux numéroté + boucles de retour. */
+  function renderProcessus(pr) {
+    let h = renderSteps(pr.etapes);
+    if (pr.boucles && pr.boucles.length) {
+      h += `<p class="sub">Trois boucles de retour possibles</p>` + renderList(pr.boucles, "list--warn");
+    }
+    return h;
+  }
+
+  /** Flux d'étapes numérotées. Chaque étape : { titre, acteur?, description? | actions?, regle? }. */
   function renderSteps(steps) {
     return `<div class="stepper">` + steps.map((st, i) => `
       <div class="step">
         <div class="step__num">${i + 1}</div>
         <div class="step__body">
           <p class="step__title">${E(st.titre)}${st.acteur ? `<span class="step__actor">${E(st.acteur)}</span>` : ""}</p>
-          <p class="step__desc">${E(st.description)}</p>
+          ${st.description ? `<p class="step__desc">${E(st.description)}</p>` : ""}
+          ${st.actions ? `<p class="step__desc">${E(st.actions)}</p>` : ""}
+          ${st.regle ? `<p class="step__regle"><strong>Règle de gestion :</strong> ${E(st.regle)}</p>` : ""}
         </div>
       </div>`).join("") + `</div>`;
   }
@@ -138,18 +210,30 @@ FC.fiche = (function () {
     </table></div>`;
   }
 
+  /** Fiscalité : tableau (array de {situation, traitement}) ou { lignes, note }. */
   function renderFiscalite(fisc) {
-    return `<div class="table-wrap"><table class="table">
-      <thead><tr><th>Situation</th><th>Traitement</th></tr></thead>
-      <tbody>${fisc.map((f) => `<tr><td>${E(f.situation)}</td><td>${E(f.traitement)}</td></tr>`).join("")}</tbody>
+    const rows = Array.isArray(fisc) ? fisc : fisc.lignes;
+    const table = `<div class="table-wrap"><table class="table">
+      <thead><tr><th>Origine des versements</th><th>Traitement</th></tr></thead>
+      <tbody>${rows.map((f) => `<tr><td>${E(f.situation)}</td><td>${E(f.traitement)}</td></tr>`).join("")}</tbody>
     </table></div>`;
+    const note = (!Array.isArray(fisc) && fisc.note) ? noteHTML("Pourquoi c'est important en gestion", fisc.note, "info") : "";
+    return table + note;
+  }
+
+  /** Règles essentielles : cartes numérotées { titre, texte }. */
+  function renderReglesNum(items) {
+    return `<div class="regles-num">` + items.map((r, i) => `
+      <div class="regle-card">
+        <div class="regle-card__num">${i + 1}</div>
+        <div class="regle-card__body">
+          <p class="regle-card__titre">${E(r.titre)}</p>
+          <p class="regle-card__txt">${E(r.texte)}</p>
+        </div>
+      </div>`).join("") + `</div>`;
   }
 
   function renderSchema(code) {
-    // Logigramme fourni en syntaxe Mermaid dans le JSON.
-    // La plate-forme étant 100 % offline (sans dépendance externe), on affiche
-    // le code du logigramme dans un bloc lisible. Pour un rendu graphique,
-    // intégrer mermaid.js et remplacer le bloc par <div class="mermaid">.
     return `<p class="schema-note">Logigramme du processus (notation Mermaid, exploitable dans un outil compatible) :</p>
       <pre class="mermaid">${E(code)}</pre>`;
   }
