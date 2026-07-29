@@ -537,39 +537,6 @@
           },
           "regleCle": "annuités garanties et rente à paliers sont incompatibles ; la combinaison « annuités garanties réversibles » permet en revanche de cumuler garantie d'annuités et réversion."
         },
-        "processus": {
-          "etapes": [
-            {
-              "titre": "Demande",
-              "description": "Le titulaire formule sa demande (espace client, mail, courrier) ; envoi du formulaire de liquidation et de la liste des pièces."
-            },
-            {
-              "titre": "Réception & analyse",
-              "description": "Enregistrement de la demande, contrôle de recevabilité, relance automatique si pièces bloquantes manquantes."
-            },
-            {
-              "titre": "Simulation",
-              "description": "Sur demande : simulations chiffrées des options (rente/capital) adressées au titulaire pour choix éclairé."
-            },
-            {
-              "titre": "Instruction & saisie",
-              "description": "Saisie du dossier de liquidation : contrat, compartiments, options de sortie, bénéficiaires, coordonnées bancaires."
-            },
-            {
-              "titre": "Validation",
-              "description": "Contrôle des données et de la valorisation ; validation à un ou deux niveaux selon les seuils d'habilitation."
-            },
-            {
-              "titre": "Paiement & notification",
-              "description": "Mise en paiement (virement), notification de liquidation et titre de rente au titulaire."
-            }
-          ],
-          "boucles": [
-            "Pièces manquantes bloquantes → courrier/notification de demande de pièces, dossier en attente.",
-            "Simulation non conforme aux attentes → nouveau choix d'options par le titulaire avant instruction.",
-            "Contrôle de validation KO → retour au gestionnaire pour correction avant mise en paiement."
-          ]
-        },
         "etapes": [
           {
             "titre": "Identifier le titulaire",
