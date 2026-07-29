@@ -1,0 +1,8 @@
+# N'embarque pas les données d'exécution ni les artefacts locaux dans l'image.
+.venv/
+**/__pycache__/
+server/storage/*.json
+assets/videos/*
+!assets/videos/.gitkeep
+!assets/videos/README.md
+.git

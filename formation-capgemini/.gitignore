@@ -1,0 +1,12 @@
+# Données d'exécution du backend (ne pas committer)
+server/storage/*.json
+server/__pycache__/
+__pycache__/
+
+# Vidéos uploadées (données d'exécution). On garde le dossier via .gitkeep.
+assets/videos/*
+!assets/videos/.gitkeep
+!assets/videos/README.md
+
+# Environnement virtuel (run.sh)
+.venv/

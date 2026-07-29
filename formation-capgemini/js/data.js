@@ -1,0 +1,446 @@
+/* =========================================================================
+   data.js — Chargement et indexation du référentiel (curriculum.json)
+   Les contenus sont totalement découplés du code : enrichir le JSON suffit.
+   ========================================================================= */
+window.FC = window.FC || {};
+
+FC.data = (function () {
+  let _curriculum = null;      // objet brut du JSON
+  const _themeById = {};       // index id -> thème
+  const _domaineById = {};     // index id -> domaine
+  const _sousDomaineById = {}; // index "domaineId/sousDomaineId" -> sous-domaine
+
+  /** Charge le référentiel une seule fois et construit les index. */
+  async function load() {
+    if (_curriculum) return _curriculum;
+    // Mode embarqué (build single-file / hors-ligne) : référentiel injecté en global.
+    if (typeof window !== "undefined" && window.FC_EMBEDDED_CURRICULUM) {
+      _curriculum = window.FC_EMBEDDED_CURRICULUM;
+    } else {
+      const res = await fetch("data/curriculum.json", { cache: "no-cache" });
+      if (!res.ok) throw new Error("Impossible de charger le référentiel (HTTP " + res.status + ").");
+      _curriculum = await res.json();
+    }
+
+    _curriculum.domaines.forEach((d) => {
+      _domaineById[d.id] = d;
+      (d.sousDomaines || []).forEach((sd) => {
+        _sousDomaineById[d.id + "/" + sd.id] = sd;
+      });
+    });
+    _curriculum.themes.forEach((t) => { _themeById[t.id] = t; });
+
+    // Détection du mode (backend connecté ou repli localStorage) + caches.
+    await loadVideoConfig();
+    await loadFormationConfig();
+    return _curriculum;
+  }
+
+  const meta = () => _curriculum.meta;
+  const themes = () => _curriculum.themes;
+  const domaines = () => _curriculum.domaines;
+  const themeById = (id) => _themeById[id] || null;
+  const domaineById = (id) => _domaineById[id] || null;
+  const sousDomaineById = (domaineId, sdId) => _sousDomaineById[domaineId + "/" + sdId] || null;
+
+  const niveauLibelle = (id) =>
+    (_curriculum.niveaux.find((n) => n.id === id) || { libelle: id }).libelle;
+  const typeLibelle = (id) =>
+    (_curriculum.types.find((t) => t.id === id) || { libelle: id }).libelle;
+
+  /* ---------------------------------------------------------------------
+     PARCOURS (onglets du catalogue)
+     Deux parcours, dérivés directement du niveau des thèmes :
+       - "fondamentaux" : Les fondamentaux de l'assurance (niveau conceptuel)
+       - "expert"       : Parcours Expert (niveau spécialisé)
+     --------------------------------------------------------------------- */
+  const PARCOURS = [
+    { id: "fondamentaux", libelle: "Les fondamentaux de l'assurance", niveau: "conceptuel",
+      accroche: "Le socle de connaissances générales. Chaque thème est proposé en deux formats : une vidéo de formation ou une page web structurée." },
+    { id: "expert", libelle: "Parcours Expert", niveau: "specialise",
+      accroche: "Les actes de gestion opérationnels : parcours détaillés, règles de gestion, réglementation et points de vigilance." },
+  ];
+  const parcours = () => PARCOURS;
+  const parcoursById = (id) => PARCOURS.find((p) => p.id === id) || PARCOURS[0];
+  /** Parcours auquel appartient un thème (via son niveau). */
+  const parcoursOfTheme = (theme) =>
+    (PARCOURS.find((p) => p.niveau === theme.niveau) || PARCOURS[0]).id;
+
+  /* ---------------------------------------------------------------------
+     VIDÉOS — deux modes, transparents pour le reste de l'application :
+
+     • MODE CONNECTÉ : si le backend (server/app.py) répond sur `api/videos`,
+       les surcharges vidéo sont lues et écrites côté serveur. Les fichiers
+       uploadés sont stockés sur disque (assets/videos/) et servis à tous :
+       persistance réelle, partagée entre utilisateurs.
+
+     • MODE LOCAL (repli) : sans backend, les surcharges sont persistées dans
+       le navigateur (localStorage) et un fichier uploadé est jouable le temps
+       de la session (blob), en attendant son dépôt manuel dans assets/videos/.
+
+     Dans les deux cas, une surcharge prime sur la vidéo définie dans
+     curriculum.json. Le cache `_overrides` est chargé une fois au démarrage.
+     --------------------------------------------------------------------- */
+  const API_BASE = "api";
+  const LS_KEY = "fc.videos.overrides";
+  const LS_FORM = "fc.formations.status";   // statut de visibilité par thème (mode local)
+  const TOKEN_KEY = "fc.admin.token";
+  const _sessionBlobs = {};   // themeId -> objectURL (fichiers uploadés, mode local)
+  let _apiAvailable = false;   // le backend répond-il ?
+  let _authRequired = false;   // le backend exige-t-il une authentification pour écrire ?
+  let _overrides = {};         // cache des surcharges vidéo (serveur ou localStorage)
+  let _formations = {};        // cache des statuts de visibilité (serveur ou localStorage)
+
+  const readLocal = () => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch (e) { return {}; }
+  };
+  const writeLocal = () => localStorage.setItem(LS_KEY, JSON.stringify(_overrides));
+
+  /** Détecte le mode et initialise le cache des surcharges. */
+  async function loadVideoConfig() {
+    // Mode embarqué : pas de backend, surcharges en localStorage uniquement.
+    if (typeof window !== "undefined" && window.FC_EMBEDDED) {
+      _apiAvailable = false; _authRequired = false; _overrides = readLocal(); return;
+    }
+    try {
+      const res = await fetch(API_BASE + "/videos", { cache: "no-cache" });
+      if (res.ok) {
+        const data = await res.json();
+        _apiAvailable = true;
+        _authRequired = !!data.authRequired;
+        _overrides = data.videos || {};
+        return;
+      }
+    } catch (e) { /* backend absent -> repli */ }
+    _apiAvailable = false;
+    _authRequired = false;
+    _overrides = readLocal();
+  }
+
+  const isConnected = () => _apiAvailable;
+  function getOverrides() { return _overrides; }
+  function setSessionBlob(themeId, objectUrl) { _sessionBlobs[themeId] = objectUrl; }
+  function sessionBlob(themeId) { return _sessionBlobs[themeId] || null; }
+
+  /* ---- Visibilité des formations (masquer / supprimer) ------------------- */
+  const readLocalForm = () => {
+    try { return JSON.parse(localStorage.getItem(LS_FORM) || "{}"); } catch (e) { return {}; }
+  };
+  const writeLocalForm = () => localStorage.setItem(LS_FORM, JSON.stringify(_formations));
+
+  /** Charge les statuts de visibilité (serveur si connecté, sinon localStorage). */
+  async function loadFormationConfig() {
+    if (_apiAvailable) {
+      try {
+        const res = await fetch(API_BASE + "/formations", { cache: "no-cache" });
+        if (res.ok) { _formations = (await res.json()).formations || {}; return; }
+      } catch (e) { /* repli */ }
+    }
+    _formations = readLocalForm();
+  }
+
+  const _entry = (theme) => _formations[typeof theme === "string" ? theme : theme.id] || {};
+
+  /** Statut d'un thème : "visible" (défaut), "hidden" ou "deleted". */
+  function themeStatus(theme) { return _entry(theme).status || "visible"; }
+  /** Visible dans l'espace utilisateur ? */
+  const isVisibleToUsers = (theme) => themeStatus(theme) === "visible";
+  /** Le bouton "Vidéo de formation" est-il affiché pour les utilisateurs ? (défaut oui) */
+  const videoButtonVisible = (theme) => !_entry(theme).videoHidden;
+  /** Le bouton "Page de formation" est-il affiché pour les utilisateurs ? (défaut oui) */
+  const pageButtonVisible = (theme) => !_entry(theme).pageHidden;
+
+  /** Mise à jour partielle (fusion) de l'état d'un thème. patch peut contenir
+   *  { status, videoHidden, pageHidden }. */
+  async function updateFormation(themeId, patch) {
+    if (_apiAvailable) {
+      const res = await fetch(API_BASE + "/formations/" + encodeURIComponent(themeId), {
+        method: "PUT",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw await httpError(res, "Échec de la mise à jour");
+      const entry = (await res.json()).entry || {};
+      if (Object.keys(entry).length) _formations[themeId] = entry; else delete _formations[themeId];
+      return;
+    }
+    // Mode local : fusion + normalisation.
+    const entry = Object.assign({}, _formations[themeId]);
+    if ("status" in patch) {
+      if (patch.status === "visible") delete entry.status; else entry.status = patch.status;
+    }
+    ["videoHidden", "pageHidden"].forEach((f) => {
+      if (f in patch) { if (patch[f]) entry[f] = true; else delete entry[f]; }
+    });
+    if (Object.keys(entry).length) _formations[themeId] = entry; else delete _formations[themeId];
+    writeLocalForm();
+  }
+
+  const setFormationStatus = (themeId, status) => updateFormation(themeId, { status });
+  const setVideoButtonVisible = (themeId, visible) => updateFormation(themeId, { videoHidden: !visible });
+  const setPageButtonVisible = (themeId, visible) => updateFormation(themeId, { pageHidden: !visible });
+
+  /* ---- Authentification admin (mode connecté) ---------------------------- */
+  const authRequired = () => _authRequired;
+  function getToken() { try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
+  const isAuthed = () => !!getToken();
+  function logout() { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+  function authHeaders() { const t = getToken(); return t ? { Authorization: "Bearer " + t } : {}; }
+
+  /** Échange un mot de passe contre un jeton de session. */
+  async function login(password) {
+    const res = await fetch(API_BASE + "/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) throw await httpError(res, "Échec de la connexion");
+    const data = await res.json();
+    try { sessionStorage.setItem(TOKEN_KEY, data.token); } catch (e) {}
+    return true;
+  }
+
+  /** Construit une erreur ; sur 401, purge le jeton et marque err.auth. */
+  async function httpError(res, fallback) {
+    const err = new Error(await errText(res, fallback));
+    if (res.status === 401) { logout(); err.auth = true; }
+    return err;
+  }
+
+  /** Enregistre une vidéo par URL (YouTube / Vimeo / lien direct). */
+  async function setVideoUrl(themeId, cfg) {
+    if (_apiAvailable) {
+      const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), {
+        method: "PUT",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(cfg),
+      });
+      if (!res.ok) throw await httpError(res, "Échec de l'enregistrement");
+      _overrides[themeId] = await res.json();
+    } else {
+      _overrides[themeId] = { type: cfg.type, src: cfg.src, titre: cfg.titre, duree: cfg.duree };
+      writeLocal();
+    }
+  }
+
+  /** Upload d'un fichier vidéo. Mode connecté = persistance serveur ; sinon session. */
+  async function uploadVideoFile(themeId, file, meta) {
+    if (_apiAvailable) {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("titre", (meta && meta.titre) || "");
+      fd.append("duree", (meta && meta.duree) || "");
+      const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId) + "/upload", {
+        method: "POST", headers: authHeaders(), body: fd,
+      });
+      if (!res.ok) throw await httpError(res, "Échec de l'upload");
+      _overrides[themeId] = await res.json();
+      delete _sessionBlobs[themeId]; // le serveur sert désormais le fichier
+    } else {
+      _sessionBlobs[themeId] = URL.createObjectURL(file);
+      _overrides[themeId] = {
+        type: "fichier", src: "assets/videos/" + file.name,
+        titre: (meta && meta.titre) || "", duree: (meta && meta.duree) || "", pendingUpload: true,
+      };
+      writeLocal();
+    }
+  }
+
+  /** Retire la vidéo d'un thème. */
+  async function removeVideo(themeId) {
+    if (_apiAvailable) {
+      const res = await fetch(API_BASE + "/videos/" + encodeURIComponent(themeId), {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!res.ok) throw await httpError(res, "Échec de la suppression");
+    }
+    delete _overrides[themeId];
+    delete _sessionBlobs[themeId];
+    if (!_apiAvailable) writeLocal();
+  }
+
+  async function errText(res, fallback) {
+    try { const j = await res.json(); return j.detail || `${fallback} (${res.status})`; }
+    catch (e) { return `${fallback} (${res.status})`; }
+  }
+
+  /**
+   * Vidéo effective d'un thème : surcharge (serveur ou local) si présente,
+   * sinon la vidéo du référentiel. Retourne null si aucune vidéo.
+   */
+  function getVideo(theme) {
+    const ov = _overrides[theme.id];
+    const base = ov || theme.video || null;
+    if (!base) return null;
+    const v = Object.assign({}, base);
+    // En mode local, un fichier uploadé cette session prime pour la lecture.
+    const blob = sessionBlob(theme.id);
+    v.playSrc = blob || v.src;
+    return v;
+  }
+
+  /** Formats de restitution disponibles pour un thème. */
+  function formats(theme) {
+    return {
+      page: hasPage(theme),
+      video: !!getVideo(theme),
+    };
+  }
+  /** Un thème a une "page" structurée dès qu'il possède au moins une section de contenu. */
+  function hasPage(theme) {
+    const s = theme.sections || {};
+    return Object.keys(s).some((k) => {
+      const v = s[k];
+      return v != null && !(Array.isArray(v) && v.length === 0);
+    });
+  }
+
+  /**
+   * Filtre les thèmes selon les critères actifs.
+   * @param {{q:string, domaine:string, niveau:string, type:string}} f
+   */
+  function filter(f) {
+    const q = (f.q || "").trim().toLowerCase();
+    return themes().filter((t) => {
+      if (f.domaine && t.domaine !== f.domaine) return false;
+      if (f.niveau && t.niveau !== f.niveau) return false;
+      if (f.type && t.type !== f.type) return false;
+      if (q) {
+        const hay = (t.titre + " " + (t.resume || "") + " " +
+          (domaineById(t.domaine) || {}).nom + " " +
+          niveauLibelle(t.niveau) + " " + typeLibelle(t.type)).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  /** Fil d'Ariane textuel Domaine > Sous-domaine > Thème. */
+  function breadcrumb(theme) {
+    const d = domaineById(theme.domaine);
+    const sd = sousDomaineById(theme.domaine, theme.sousDomaine);
+    return {
+      domaine: d ? d.nom : theme.domaine,
+      sousDomaine: sd ? sd.nom : theme.sousDomaine,
+      theme: theme.titre,
+    };
+  }
+
+  /* ---------------------------------------------------------------------
+     ACTUALITÉS & VEILLE DU SECTEUR
+     Mode connecté : persistance serveur (news.json) + récupération des
+     métadonnées côté serveur (anti-CORS). Mode local : localStorage, la
+     récupération auto n'est pas disponible (saisie manuelle).
+     --------------------------------------------------------------------- */
+  const LS_NEWS = "fc.news";
+  const readNews = () => { try { return JSON.parse(localStorage.getItem(LS_NEWS) || "[]"); } catch (e) { return []; } };
+  const writeNews = (arr) => localStorage.setItem(LS_NEWS, JSON.stringify(arr));
+  const normUrl = (u) => (u || "").trim().replace(/\/+$/, "");
+
+  /** URL http(s) valide ? (validation client, complète celle du serveur). */
+  function isValidHttpUrl(u) {
+    try { const p = new URL((u || "").trim()); return p.protocol === "http:" || p.protocol === "https:"; }
+    catch (e) { return false; }
+  }
+  /** La récupération automatique des métadonnées est-elle disponible ? (backend requis) */
+  const metadataAvailable = () => _apiAvailable;
+
+  function _sortByDate(arr, key) {
+    return arr.slice().sort((a, b) => String(b[key] || b.createdAt || "").localeCompare(String(a[key] || a.createdAt || "")));
+  }
+
+  /** Articles publiés (page utilisateur), du plus récent au plus ancien. */
+  async function newsPublic() {
+    if (_apiAvailable) {
+      try { const r = await fetch(API_BASE + "/news", { cache: "no-cache" }); if (r.ok) return (await r.json()).articles || []; } catch (e) {}
+      return [];
+    }
+    return _sortByDate(readNews().filter((a) => a.isPublished), "publishedAt");
+  }
+
+  /** Tous les articles (admin). */
+  async function newsAll() {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/admin/news", { headers: authHeaders(), cache: "no-cache" });
+      if (!r.ok) throw await httpError(r, "Chargement des actualités impossible");
+      return (await r.json()).articles || [];
+    }
+    return _sortByDate(readNews(), "createdAt");
+  }
+
+  /** Récupère les métadonnées d'une URL (serveur). Indisponible en mode local. */
+  async function newsFetchMetadata(url) {
+    if (!_apiAvailable) { const e = new Error("Récupération automatique indisponible sans backend — saisie manuelle."); e.noBackend = true; throw e; }
+    const r = await fetch(API_BASE + "/news/fetch-metadata", {
+      method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+      body: JSON.stringify({ url }),
+    });
+    if (!r.ok) throw await httpError(r, "Récupération des métadonnées impossible");
+    return await r.json();
+  }
+
+  async function newsCreate(data) {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/news", {
+        method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(data),
+      });
+      if (!r.ok) throw await httpError(r, "Ajout de l'article impossible");
+      return await r.json();
+    }
+    // Mode local
+    const items = readNews();
+    if (items.some((a) => normUrl(a.url) === normUrl(data.url))) throw new Error("Cet article a déjà été ajouté.");
+    const article = {
+      id: "loc-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title: (data.title || "").trim(), description: (data.description || "").trim(),
+      url: normUrl(data.url), imageUrl: (data.imageUrl || "").trim(), source: (data.source || "").trim(),
+      publishedAt: (data.publishedAt || "").trim(), isPublished: !!data.isPublished,
+      createdAt: new Date().toISOString(),
+    };
+    items.push(article); writeNews(items); return article;
+  }
+
+  async function newsUpdate(id, patch) {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/news/" + encodeURIComponent(id), {
+        method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify(patch),
+      });
+      if (!r.ok) throw await httpError(r, "Modification impossible");
+      return await r.json();
+    }
+    const items = readNews();
+    const art = items.find((a) => a.id === id);
+    if (!art) throw new Error("Article introuvable.");
+    if (patch.url != null) {
+      const nu = normUrl(patch.url);
+      if (items.some((a) => a.id !== id && normUrl(a.url) === nu)) throw new Error("Cet article a déjà été ajouté.");
+      art.url = nu;
+    }
+    ["title", "description", "imageUrl", "source", "publishedAt"].forEach((k) => { if (patch[k] != null) art[k] = String(patch[k]).trim(); });
+    if (patch.isPublished != null) art.isPublished = !!patch.isPublished;
+    writeNews(items); return art;
+  }
+
+  async function newsDelete(id) {
+    if (_apiAvailable) {
+      const r = await fetch(API_BASE + "/news/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+      if (!r.ok) throw await httpError(r, "Suppression impossible");
+      return;
+    }
+    writeNews(readNews().filter((a) => a.id !== id));
+  }
+
+  return {
+    load, meta, themes, domaines, themeById, domaineById, sousDomaineById,
+    niveauLibelle, typeLibelle, filter, breadcrumb,
+    parcours, parcoursById, parcoursOfTheme,
+    getVideo, formats, hasPage,
+    isConnected, getOverrides, setVideoUrl, uploadVideoFile, removeVideo,
+    authRequired, isAuthed, login, logout,
+    themeStatus, isVisibleToUsers, setFormationStatus,
+    videoButtonVisible, pageButtonVisible, setVideoButtonVisible, setPageButtonVisible,
+    isValidHttpUrl, metadataAvailable,
+    newsPublic, newsAll, newsFetchMetadata, newsCreate, newsUpdate, newsDelete,
+  };
+})();

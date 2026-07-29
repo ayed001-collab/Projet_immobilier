@@ -1,0 +1,49 @@
+name: Déploiement POC Formation (GitHub Pages)
+
+# Publie le front statique formation-capgemini/ sur GitHub Pages.
+# Fournit un lien partageable aux utilisateurs pour visualiser le POC.
+# NB : Pages sert du statique -> l'espace admin y fonctionne en "mode local"
+# (pas de backend). Les vidéos par URL / YouTube fonctionnent normalement.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/capgemini-training-platform-a2dqk3
+    paths:
+      - "formation-capgemini/**"
+      - ".github/workflows/pages-formation.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurer Pages (auto-activation si nécessaire)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Empaqueter le front statique
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: formation-capgemini
+
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
