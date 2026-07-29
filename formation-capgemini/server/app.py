@@ -71,11 +71,24 @@ _lock = threading.Lock()
 # Configuration par variables d'environnement (recommandé en production) :
 #   FORMATION_ADMIN_PASSWORD  mot de passe de l'espace admin
 #   FORMATION_SECRET          secret de signature des jetons (partagé entre workers)
+#   FORMATION_OPEN_ADMIN      si vrai (1/true/oui) : ADMIN OUVERT, aucune auth
+#                             (pratique pour une démo ; à NE PAS laisser en prod).
 # À défaut, des valeurs aléatoires sont générées au démarrage et affichées.
 TOKEN_TTL = int(os.environ.get("FORMATION_TOKEN_TTL", 8 * 3600))  # 8 h par défaut
 
+AUTH_DISABLED = (os.environ.get("FORMATION_OPEN_ADMIN") or "").strip().lower() in (
+    "1", "true", "yes", "oui", "on")
+AUTH_REQUIRED = not AUTH_DISABLED
+
 ADMIN_PASSWORD = (os.environ.get("FORMATION_ADMIN_PASSWORD") or "").strip()
-if not ADMIN_PASSWORD:
+if AUTH_DISABLED:
+    ADMIN_PASSWORD = ADMIN_PASSWORD or secrets.token_urlsafe(9)  # non utilisé en mode ouvert
+    print("\n" + "!" * 66)
+    print("  ESPACE ADMIN OUVERT — aucune authentification (FORMATION_OPEN_ADMIN).")
+    print("  Toute personne accédant au service peut modifier le contenu.")
+    print("  Retirez FORMATION_OPEN_ADMIN pour réactiver le mot de passe.")
+    print("!" * 66 + "\n")
+elif not ADMIN_PASSWORD:
     ADMIN_PASSWORD = secrets.token_urlsafe(9)
     print("\n" + "=" * 66)
     print("  ESPACE ADMIN — mot de passe généré (aucun FORMATION_ADMIN_PASSWORD) :")
@@ -120,7 +133,10 @@ def verify_token(token: str) -> bool:
 
 
 def require_auth(authorization: str = Header(default="")) -> None:
-    """Dépendance FastAPI : exige un jeton Bearer valide sur les écritures."""
+    """Dépendance FastAPI : exige un jeton Bearer valide sur les écritures.
+       En mode admin ouvert (FORMATION_OPEN_ADMIN), l'authentification est levée."""
+    if AUTH_DISABLED:
+        return
     token = authorization[7:].strip() if authorization[:7].lower() == "bearer " else ""
     if not verify_token(token):
         raise HTTPException(status_code=401, detail="Authentification requise.")
@@ -191,7 +207,7 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "mode": "connected", "authRequired": True}
+    return {"status": "ok", "mode": "connected", "authRequired": AUTH_REQUIRED}
 
 
 @app.post("/api/login")
@@ -208,7 +224,7 @@ def login(payload: dict):
 @app.get("/api/videos")
 def list_videos():
     """Retourne la configuration des vidéos (surcharges serveur). Public (lecture)."""
-    return {"videos": load_config(), "authRequired": True}
+    return {"videos": load_config(), "authRequired": AUTH_REQUIRED}
 
 
 # --- Visibilité des formations (masquer / supprimer) -------------------------
@@ -218,7 +234,7 @@ _ALLOWED_STATUS = {"visible", "hidden", "deleted"}
 @app.get("/api/formations")
 def list_formations():
     """Statut de visibilité par thème (public : l'espace utilisateur en a besoin)."""
-    return {"formations": load_formations(), "authRequired": True}
+    return {"formations": load_formations(), "authRequired": AUTH_REQUIRED}
 
 
 @app.put("/api/formations/{theme_id}", dependencies=[Depends(require_auth)])
