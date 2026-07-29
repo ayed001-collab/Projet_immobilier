@@ -159,9 +159,26 @@ python3 -m http.server 8080      # ou : npx serve .   |   php -S localhost:8080
 
 Puis ouvrir **http://localhost:8080**. L'espace admin fonctionne en **mode local** (voir plus haut).
 
-### Option B — Avec backend (upload de vidéos persistant) ⭐
+### Option B — Avec backend (upload persistant + récupération des métadonnées) ⭐
 
-Pour un **vrai upload persistant et partagé**, lancez le backend, qui sert aussi le front :
+Le backend est nécessaire pour deux fonctions : l'**upload de vidéos persistant** et la
+**récupération automatique des métadonnées d'articles** (Actualités), qui se fait côté serveur.
+
+#### Prérequis
+
+| Prérequis | Détail |
+|---|---|
+| **Python** | 3.9 ou plus récent (testé sur 3.11). C'est le seul prérequis système. |
+| **Dépendances** | 3 paquets pip (voir `server/requirements.txt`) : `fastapi`, `uvicorn[standard]`, `python-multipart`. Installés en une commande. |
+| **Base de données** | **Aucune.** Les données sont des fichiers JSON dans `server/storage/` (créés automatiquement). |
+| **Disque** | Accès en écriture à `server/storage/` et `assets/videos/`. |
+| **Réseau** | Accès **HTTPS sortant** depuis le serveur vers les sites d'articles (pour la récupération des métadonnées). Derrière un proxy d'entreprise, définir `HTTPS_PROXY` / `HTTP_PROXY`. |
+| **Navigateur** | Aucun prérequis particulier (le front est du HTML/CSS/JS standard). |
+
+> Aucune nouvelle dépendance au-delà de ces 3 paquets ; tout le reste s'appuie sur la bibliothèque
+> standard de Python.
+
+#### Lancement
 
 ```bash
 cd formation-capgemini
@@ -169,9 +186,25 @@ pip install -r server/requirements.txt
 uvicorn server.app:app --port 8000        # ajouter --reload en développement
 ```
 
+Ou en **une seule commande** (crée un environnement virtuel, installe et démarre) :
+
+```bash
+./server/run.sh                # variables : PORT, FORMATION_ADMIN_PASSWORD…
+```
+
+Ou **sans rien installer, avec Docker** (seul prérequis : Docker) :
+
+```bash
+cd formation-capgemini
+docker build -f server/Dockerfile -t formation-veille .
+docker run -p 8000:8000 -e FORMATION_ADMIN_PASSWORD="votre-mdp" \
+  -v "$PWD/server/storage:/app/server/storage" -v "$PWD/assets/videos:/app/assets/videos" \
+  formation-veille
+```
+
 Puis ouvrir **http://localhost:8000**. L'espace admin passe automatiquement en **mode connecté** :
-les fichiers uploadés sont stockés dans `assets/videos/` et la configuration dans
-`server/storage/videos.json`.
+les fichiers uploadés sont stockés dans `assets/videos/`, la configuration dans
+`server/storage/` (vidéos, visibilité, actualités).
 
 **API exposée** (préfixe `/api`) :
 

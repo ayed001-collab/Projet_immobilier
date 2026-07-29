@@ -1,5 +1,5 @@
 # Données d'exécution du backend (ne pas committer)
-server/storage/videos.json
+server/storage/*.json
 server/__pycache__/
 __pycache__/
 
@@ -7,3 +7,6 @@ __pycache__/
 assets/videos/*
 !assets/videos/.gitkeep
 !assets/videos/README.md
+
+# Environnement virtuel (run.sh)
+.venv/
