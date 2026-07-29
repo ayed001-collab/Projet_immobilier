@@ -212,15 +212,24 @@ Pour obtenir une **URL publique** (auto-récupération des métadonnées + persi
 déployez l'image Docker (`server/Dockerfile`) sur un hébergeur. Le conteneur écoute le port injecté
 par l'hôte (`$PORT`). Le dépôt étant un monorepo, on pointe l'hébergeur sur le sous-dossier.
 
-**Render (recommandé, offre gratuite)** — depuis le dépôt GitHub :
-1. [render.com](https://render.com) → **New +** → **Web Service** → connecter le dépôt
-   `ayed001-collab/Projet_immobilier` (branche du POC ou `main`).
-2. **Root Directory** : `formation-capgemini` · **Runtime** : `Docker` ·
-   **Dockerfile Path** : `server/Dockerfile`.
-3. **Environment** → ajouter les variables :
-   `FORMATION_ADMIN_PASSWORD` (mot de passe admin), `FORMATION_SECRET` (chaîne aléatoire longue).
-4. **Health Check Path** : `/api/health`. Créer le service → URL publique
-   `https://<nom>.onrender.com`.
+**Render — en un clic via le Blueprint (recommandé, offre gratuite)**
+
+Un fichier [`render.yaml`](../render.yaml) (à la racine du dépôt) décrit déjà le service
+(`plan: free`, Docker, `rootDir: formation-capgemini`, health check `/api/health`, `FORMATION_SECRET`
+généré automatiquement) :
+
+1. [render.com](https://render.com) → **New +** → **Blueprint** → connecter le dépôt
+   `ayed001-collab/Projet_immobilier` → choisir la **branche du POC**.
+2. Render lit `render.yaml` ; renseigner le mot de passe demandé
+   (`FORMATION_ADMIN_PASSWORD`) → **Apply**.
+3. URL publique obtenue : `https://<nom>.onrender.com` (le front bascule en mode connecté).
+
+<details><summary>Ou configuration manuelle (sans Blueprint)</summary>
+
+**New +** → **Web Service** → dépôt + branche · **Root Directory** `formation-capgemini` ·
+**Runtime** `Docker` · **Dockerfile Path** `server/Dockerfile` · **Health Check Path**
+`/api/health` · variables `FORMATION_ADMIN_PASSWORD` et `FORMATION_SECRET`.
+</details>
 
 **Railway** (équivalent) : *New Project* → *Deploy from GitHub repo* → **Root Directory**
 `formation-capgemini`, build par `server/Dockerfile` ; mêmes variables d'environnement.

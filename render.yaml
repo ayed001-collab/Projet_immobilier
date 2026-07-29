@@ -1,0 +1,36 @@
+# =============================================================================
+# Blueprint Render — POC « Academy for insurance Excellence » (backend + front).
+# Déploie le sous-dossier formation-capgemini/ via son Dockerfile.
+#
+# Utilisation (offre GRATUITE) :
+#   Render → New + → Blueprint → connecter ce dépôt → choisir la branche du POC.
+#   Render lit ce fichier et crée le service. Renseigner ensuite le mot de passe
+#   admin (FORMATION_ADMIN_PASSWORD) demandé au déploiement.
+#
+# NB offre gratuite : le service se met en veille après ~15 min d'inactivité
+# (1er accès ensuite ~50 s), et le disque est ÉPHÉMÈRE (les articles/vidéos
+# ajoutés repartent à zéro après un redéploiement / une veille).
+# Pour une persistance durable, passer sur un plan payant et décommenter le
+# bloc « disk » ci-dessous.
+# =============================================================================
+services:
+  - type: web
+    name: academy-veille-poc
+    runtime: docker
+    plan: free
+    rootDir: formation-capgemini        # sous-dossier du monorepo
+    dockerfilePath: server/Dockerfile   # relatif à rootDir
+    dockerContext: .                    # = formation-capgemini/
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: FORMATION_ADMIN_PASSWORD   # saisi au déploiement (non versionné)
+        sync: false
+      - key: FORMATION_SECRET           # secret stable généré par Render
+        generateValue: true
+    # --- Persistance (plan payant uniquement) : décommenter pour conserver
+    #     les articles, vidéos et statuts entre les redéploiements ---
+    # disk:
+    #   name: data
+    #   mountPath: /app/server/storage
+    #   sizeGB: 1
