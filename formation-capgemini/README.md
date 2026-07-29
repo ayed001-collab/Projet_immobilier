@@ -206,6 +206,36 @@ Puis ouvrir **http://localhost:8000**. L'espace admin passe automatiquement en *
 les fichiers uploadés sont stockés dans `assets/videos/`, la configuration dans
 `server/storage/` (vidéos, visibilité, actualités).
 
+### Option C — Lien public partageable AVEC backend (déploiement) 🌐
+
+Pour obtenir une **URL publique** (auto-récupération des métadonnées + persistance partagée),
+déployez l'image Docker (`server/Dockerfile`) sur un hébergeur. Le conteneur écoute le port injecté
+par l'hôte (`$PORT`). Le dépôt étant un monorepo, on pointe l'hébergeur sur le sous-dossier.
+
+**Render (recommandé, offre gratuite)** — depuis le dépôt GitHub :
+1. [render.com](https://render.com) → **New +** → **Web Service** → connecter le dépôt
+   `ayed001-collab/Projet_immobilier` (branche du POC ou `main`).
+2. **Root Directory** : `formation-capgemini` · **Runtime** : `Docker` ·
+   **Dockerfile Path** : `server/Dockerfile`.
+3. **Environment** → ajouter les variables :
+   `FORMATION_ADMIN_PASSWORD` (mot de passe admin), `FORMATION_SECRET` (chaîne aléatoire longue).
+4. **Health Check Path** : `/api/health`. Créer le service → URL publique
+   `https://<nom>.onrender.com`.
+
+**Railway** (équivalent) : *New Project* → *Deploy from GitHub repo* → **Root Directory**
+`formation-capgemini`, build par `server/Dockerfile` ; mêmes variables d'environnement.
+
+> **Persistance** : sur les offres gratuites, le disque est éphémère (les données repartent à zéro
+> après un redéploiement / une mise en veille). Pour une démo durable, ajouter un disque persistant
+> monté sur `/app/server/storage` **et** `/app/assets/videos` (option payante chez la plupart des hôtes).
+>
+> **Sécurité** : le service devenant public, **définissez toujours `FORMATION_ADMIN_PASSWORD` et
+> `FORMATION_SECRET`** (sinon un mot de passe aléatoire est généré et visible dans les logs). Servez
+> derrière HTTPS (fourni par défaut par Render / Railway).
+>
+> **Sans carte bancaire** : *Hugging Face Spaces* (SDK Docker) fonctionne aussi ; il faut alors placer
+> le contenu de `formation-capgemini/` à la racine du dépôt du Space et exposer le port 7860.
+
 **API exposée** (préfixe `/api`) :
 
 | Méthode | Route | Auth | Rôle |
